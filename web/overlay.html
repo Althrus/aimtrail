@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>AimTrail Overlay</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  #dbg { position: fixed; left: 10px; top: 8px; font: 12px/1.4 system-ui, sans-serif; color: #38bdf8; display: none; }
+</style>
+</head>
+<body>
+<canvas id="glow"></canvas>
+<canvas id="main"></canvas>
+<div id="frame" style="display:none"></div>
+<div id="dbg"></div>
+<script src="trail.js"></script>
+<script src="wm.js"></script>
+<script>
+  const A = AimTrail;
+  A.startHeartbeat();   // dipakai pemuat OBS (file lokal) untuk mendeteksi halaman hidup
+  const r = new A.AimTrail(document.getElementById('main'), document.getElementById('glow'));
+  const wm = AimWM.mount(document.body);
+  const dbg = document.getElementById('dbg');
+  const debug = new URLSearchParams(location.search).has('debug');
+
+  // Hemat: loop gambar hanya berjalan saat ada yang digambar; diam = nol pekerjaan.
+  let raf = 0;
+  function tick(t) { raf = 0; r.frame(t); if (!r.idle) raf = requestAnimationFrame(tick); }
+  function kick() { if (!raf) raf = requestAnimationFrame(tick); }
+
+  function fit() { r.resize(innerWidth, innerHeight, window.devicePixelRatio || 1); kick(); }
+  addEventListener('resize', fit);
+  fit();
+
+  let up = false, evCount = 0;
+  if (debug) {
+    dbg.style.display = 'block';
+    setInterval(() => { dbg.textContent = (up ? 'AimTrail: terhubung' : 'AimTrail: menunggu server…') + ' | FPS ' + r.fps + ' | data/dtk ' + evCount * 2; evCount = 0; }, 500);
+  }
+
+  A.connect({
+    sub: 'trail', role: 'overlay',
+    onStatus(ok) { up = ok; },
+    onMessage(m) {
+      if (Array.isArray(m)) { evCount += m.length; A.handleEvents(r, m, performance.now()); kick(); return; }
+      if (m.t === 'hello' || m.t === 'config') {
+        r.setConfig(m.config || {});
+        A.applyBackground(document.body, r.cfg);
+        A.applyBorder(document.getElementById('frame'), r.cfg);
+        wm.apply(r.cfg);
+        kick();
+      }
+    }
+  });
+</script>
+</body>
+</html>

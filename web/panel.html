@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AimTrail — Panel Kontrol</title>
+<style>
+  :root {
+    --bg: #0a1220; --panel: #0f1b2e; --raise: #14243b; --line: #263243;
+    --text: #dbe7f5; --muted: #8aa0b8; --accent: #38bdf8; --accent-ink: #04202e; --ok: #4ade80; --bad: #f87171;
+    --font: "Bahnschrift", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); }
+  header { display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: .2px; }
+  header p { margin: 0; color: var(--muted); }
+  .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px;
+          border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+  .pill.on i { background: var(--ok); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 24px; padding: 24px; align-items: start; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .left { position: sticky; top: 16px; display: grid; gap: 14px; }
+  @media (max-width: 1000px) { .left { position: static; } }
+
+  /* Stage: grid seperti contoh SVG; ukuran asli 1920x1080 lalu diskalakan */
+  .preview { position: relative; width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+             background-color: #0b1220;
+             background-image: linear-gradient(#263243 1px, transparent 1px), linear-gradient(90deg, #263243 1px, transparent 1px);
+             background-size: 20px 20px; }
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; touch-action: none; cursor: crosshair; }
+  #stage canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .live { position: absolute; right: 12px; top: 10px; display: flex; align-items: center; gap: 7px; color: var(--muted);
+          font-size: 12px; pointer-events: none; }
+  .live i { width: 9px; height: 9px; border-radius: 50%; background: #35465c; }
+  .live.on i { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .hint { color: var(--muted); font-size: 13px; margin: -4px 0 0; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, select, input[type=text] { font: inherit; color: var(--text); background: var(--raise); border: 1px solid var(--line);
+          border-radius: 6px; padding: 7px 12px; }
+  button { cursor: pointer; }
+  button:hover { border-color: #3b5573; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .card h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+  .url { display: flex; gap: 8px; }
+  .url input { flex: 1; font-family: var(--mono); font-size: 13px; min-width: 0; }
+  .card ol { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips button { padding: 5px 12px; border-radius: 999px; }
+
+  .right { display: grid; gap: 10px; }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  summary { cursor: pointer; padding: 11px 16px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--muted); font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+  .rows { padding: 2px 16px 14px; display: grid; gap: 12px; }
+  .row .lab { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); margin-bottom: 2px; }
+  .row output { color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row.inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .row.inline .lab { margin: 0; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 4px 0 0; }
+  input[type=color] { width: 44px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+  .row select { width: 100%; margin-top: 4px; }
+  .row.inline select { width: auto; max-width: 62%; margin: 0; }
+  @media (prefers-reduced-motion: no-preference) { button { transition: border-color .15s; } }
+
+  nav { display: flex; gap: 4px; margin-left: 8px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; border: 1px solid transparent; }
+  nav a:hover { color: var(--text); }
+  nav a.cur { color: var(--accent); border-color: var(--line); background: var(--panel); }
+
+  button.toggle[aria-pressed="true"] { background: #0c4a6e; color: #e0f2fe; border-color: var(--accent); }
+  .upd { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 24px; background: #0c4a6e; border-bottom: 1px solid var(--accent); color: #e0f2fe; }
+  .upd[hidden] { display: none; }
+  .upd a { color: #7dd3fc; }
+  .upd button { margin-left: auto; }
+  .credit { text-align: center; color: var(--muted); font-size: 12px; padding: 4px 24px 24px; }
+  .credit a { color: var(--accent); text-decoration: none; }
+  .credit a:hover { text-decoration: underline; }
+  .credit b { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AimTrail</h1>
+  <nav><a class="cur" href="/panel.html">Ekor mouse</a><a href="/keys-panel.html">Keyboard &amp; mouse</a><a href="/manual.html">Panduan</a></nav>
+  <span class="pill" id="status"><i></i><span>Menunggu server…</span></span>
+</header>
+<div class="upd" id="upd" hidden><span id="updtxt"></span> <a id="updnotes" target="_blank" rel="noopener">Catatan rilis</a><button class="primary" id="updbtn" hidden>Pasang &amp; restart</button></div>
+
+<main>
+  <section class="left">
+    <div class="preview" id="pv">
+      <div id="stage"><canvas id="glow"></canvas><canvas id="main"></canvas><div id="frame" style="display:none"></div></div>
+      <div class="live" id="live"><i></i><span>Tidak aktif</span></div>
+    </div>
+    <p class="hint" id="hint">Tahan klik kiri lalu gerakkan mouse di area ini untuk mencoba.</p>
+    <div class="bar">
+      <button class="toggle" id="always" aria-pressed="false" title="Ekor mengikuti gerakan mouse tanpa perlu menekan tombol">Selalu aktif: mati</button>
+      <button class="primary" id="demo">Putar demo</button>
+      <button id="clear">Bersihkan</button>
+      <select id="res" aria-label="Ukuran layar preview">
+        <option value="1920x1080">Preview 1920×1080</option>
+        <option value="2560x1440">Preview 2560×1440</option>
+        <option value="1280x720">Preview 1280×720</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <h2>URL untuk OBS</h2>
+      <div class="url"><input type="text" id="obsurl" readonly><button id="copy">Salin</button></div>
+      <ol>
+        <li>OBS → Sources → <b>+</b> → Browser, tempel URL di atas.</li>
+        <li>Isi lebar/tinggi sesuai kanvas OBS (mis. 1920 × 1080), FPS 60.</li>
+        <li>Letakkan di atas Game Capture. Pengaturan di panel ini langsung berlaku.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Anti-putus untuk OBS (disarankan)</h2>
+      <p class="note" style="margin-top:0">Di Browser Source OBS centang <b>Local file</b>, lalu pilih file di bawah. Overlay tetap tersambung
+        walau OBS dibuka sebelum AimTrail atau AimTrail dimulai ulang, tanpa perlu menghapus dan membuat source lagi.</p>
+      <div class="url"><input type="text" id="obsfile" readonly><button id="copyfile">Salin lokasi</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Preset</h2>
+      <div class="chips" id="presets"></div>
+    </div>
+
+    <div class="card">
+      <h2>Simpan &amp; muat</h2>
+      <div class="bar">
+        <button id="export">Ekspor JSON</button>
+        <button id="import">Impor JSON</button>
+        <button id="reset">Kembalikan default</button>
+        <input type="file" id="file" accept="application/json" hidden>
+      </div>
+    </div>
+  </section>
+
+  <section class="right" id="controls"></section>
+</main>
+<footer class="credit">Created by <b>Andromache</b> · TikTok <a href="https://www.tiktok.com/@andromache.4k" target="_blank" rel="noopener">@andromache.4k</a> · <a href="/manual.html">Panduan</a> · v<span id="ver">-</span></footer>
+
+<script src="trail.js"></script>
+<script src="wm.js"></script>
+<script>
+const A = AimTrail;
+const { DEFAULTS, PRESETS, SCHEMA, BEHAVIOR } = A;
+const $ = id => document.getElementById(id);
+
+let cfg = Object.assign({}, DEFAULTS);
+let connected = false, source = '';
+let SW = 1920, SH = 1080, scale = 1;
+
+const r = new A.AimTrail($('main'), $('glow'));
+r.setConfig(cfg);
+const wm = AimWM.mount($('stage'));
+
+/* ---------- ukuran preview ---------- */
+function layout() {
+  const w = $('pv').clientWidth;
+  scale = w / SW;
+  const st = $('stage');
+  st.style.width = SW + 'px'; st.style.height = SH + 'px';
+  st.style.transform = `scale(${scale})`;
+  $('pv').style.height = (SH * scale) + 'px';
+}
+function setRes(v) {
+  [SW, SH] = v.split('x').map(Number);
+  r.resize(SW, SH, 1); layout();
+}
+new ResizeObserver(layout).observe($('pv'));
+$('res').onchange = e => setRes(e.target.value);
+setRes($('res').value);
+
+/* ---------- panel kontrol otomatis dari SCHEMA ---------- */
+const fmt = (it, v) => it.p ? Math.round(v * 100) + '%' : (+v).toString() + (it.u || '');
+function build() {
+  $('controls').innerHTML = SCHEMA.map((grp, gi) => `
+    <details ${gi < 3 ? 'open' : ''}><summary>${grp.g}</summary><div class="rows">
+    ${grp.items.map(it => {
+      const id = 'f_' + it.k;
+      if (it.t === 'range') return `<div class="row"><div class="lab"><label for="${id}">${it.l}</label><output id="o_${it.k}"></output></div>
+        <input type="range" id="${id}" min="${it.min}" max="${it.max}" step="${it.step}"></div>`;
+      if (it.t === 'select') return `<div class="row ${grp.items.length > 3 ? '' : ''}"><div class="lab"><label for="${id}">${it.l}</label></div>
+        <select id="${id}">${Object.entries(it.o).map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select></div>`;
+      return `<div class="row inline"><label class="lab" for="${id}">${it.l}</label><input type="${it.t === 'color' ? 'color' : 'checkbox'}" id="${id}"></div>`;
+    }).join('')}</div></details>`).join('');
+  for (const grp of SCHEMA) for (const it of grp.items) {
+    const el = $('f_' + it.k);
+    el.addEventListener(it.t === 'range' || it.t === 'color' ? 'input' : 'change', () => {
+      const v = it.t === 'check' ? el.checked : it.t === 'range' ? parseFloat(el.value) : el.value;
+      cfg[it.k] = v;
+      if (it.t === 'range') $('o_' + it.k).textContent = fmt(it, v);
+      changed();
+    });
+  }
+}
+function sync() {
+  for (const grp of SCHEMA) for (const it of grp.items) {
+    const el = $('f_' + it.k), v = cfg[it.k];
+    if (it.t === 'check') el.checked = !!v; else el.value = v;
+    if (it.t === 'range') $('o_' + it.k).textContent = fmt(it, v);
+  }
+}
+let timer;
+function changed(push = true) {
+  r.setConfig(cfg);
+  A.applyBackground($('pv'), cfg.bg === 'none' ? { bg: 'grid', bgColor: '#0b1220', bgOpacity: 1, gridSize: 20, gridColor: '#263243' } : cfg);
+  A.applyBorder($('frame'), cfg);
+  wm.apply(cfg);
+  $('always').setAttribute('aria-pressed', !!cfg.alwaysOn);
+  $('always').textContent = 'Selalu aktif: ' + (cfg.alwaysOn ? 'NYALA' : 'mati');
+  if (push) { clearTimeout(timer); timer = setTimeout(() => net.send({ t: 'config', config: cfg }), 120); }
+}
+function replaceCfg(obj, push) {
+  cfg = Object.assign({}, DEFAULTS, obj);
+  sync(); changed(push);
+}
+
+/* ---------- preset / ekspor / impor ---------- */
+const visualBase = Object.fromEntries(Object.entries(DEFAULTS).filter(([k]) => !BEHAVIOR.has(k)));
+$('presets').innerHTML = Object.keys(PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('');
+$('presets').onclick = e => {
+  const n = e.target.dataset.p; if (!n) return;
+  replaceCfg(Object.assign({}, cfg, visualBase, PRESETS[n]), true); demo();
+};
+$('reset').onclick = () => { replaceCfg({}, true); };
+$('export').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' }));
+  a.download = 'aimtrail-config.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+$('import').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const o = JSON.parse(await f.text());
+    const clean = {}; for (const k in DEFAULTS) if (k in o && typeof o[k] === typeof DEFAULTS[k]) clean[k] = o[k];
+    replaceCfg(Object.assign({}, cfg, clean), true);
+  } catch (_) { alert('File tidak valid.'); }
+  e.target.value = '';
+};
+
+/* ---------- URL OBS ---------- */
+$('obsurl').value = location.origin + '/overlay.html';
+$('copyfile').onclick = async () => {
+  try { await navigator.clipboard.writeText($('obsfile').value); } catch (_) { $('obsfile').select(); document.execCommand('copy'); }
+  $('copyfile').textContent = 'Tersalin'; setTimeout(() => $('copyfile').textContent = 'Salin lokasi', 1200);
+};
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('obsurl').value); } catch (_) { $('obsurl').select(); document.execCommand('copy'); }
+  $('copy').textContent = 'Tersalin'; setTimeout(() => $('copy').textContent = 'Salin', 1200);
+};
+
+/* ---------- koneksi server ---------- */
+function status() {
+  $('status').classList.toggle('on', connected);
+  $('status').lastElementChild.textContent = connected
+    ? 'Terhubung · ' + (source === 'rawinput' ? 'mouse asli (Raw Input)' : 'mode simulasi')
+    : 'Menunggu server…';
+  $('hint').textContent = connected && source === 'rawinput'
+    ? 'Tahan klik kiri dan gerakkan mouse (di mana saja, termasuk di dalam game) — jejaknya muncul di sini.'
+    : 'Tahan klik kiri lalu gerakkan mouse di area ini untuk mencoba.';
+}
+const net = A.connect({
+  onStatus(ok) { connected = ok; status(); },
+  onMessage(m) {
+    if (Array.isArray(m)) return A.handleEvents(r, m, performance.now());
+    if (m.t === 'hello') { source = m.src; status(); }
+    if (m.t === 'hello' || m.t === 'config') replaceCfg(m.config || {}, false);
+  }
+});
+
+/* ---------- uji langsung di preview & demo ---------- */
+const local = () => !(connected && source === 'rawinput');   // kalau Raw Input aktif, data asli sudah masuk
+const stage = $('stage');
+stage.addEventListener('contextmenu', e => e.preventDefault());
+stage.addEventListener('pointerdown', e => { if (!local()) return; stage.setPointerCapture(e.pointerId); r.buttons(e.buttons, performance.now()); });
+stage.addEventListener('pointerup', e => { if (local()) r.buttons(e.buttons, performance.now()); });
+stage.addEventListener('pointermove', e => { if (local() && r.cur) r.move(e.movementX / scale, e.movementY / scale, 4, performance.now()); });
+
+let demoRun = 0;
+function demo() {
+  const id = ++demoRun, t0 = performance.now(), dur = 2600;
+  r.buttons(r.mask | 1, t0);
+  (function step(now) {
+    if (id !== demoRun) return;
+    const t = (now - t0) / 1000;
+    if (now - t0 > dur) { r.buttons(r.mask & ~1, now); return; }
+    r.move(16 * Math.cos(t * 3.1) + 6 * Math.sin(t * 9), 12 * Math.sin(t * 2.3) - 3, 16, now);
+    requestAnimationFrame(step);
+  })(t0);
+}
+$('demo').onclick = demo;
+$('always').onclick = () => { cfg.alwaysOn = !cfg.alwaysOn; sync(); changed(); };
+$('clear').onclick = () => { demoRun++; r.clear(); r.buttons(0); };
+
+/* ---------- loop ---------- */
+let lastLive = '';
+(function loop() {
+  r.frame(performance.now());
+  const on = !!r.cur, txt = (on ? 'Merekam gerakan' : 'Tidak aktif') + ' · ' + r.fps + ' FPS';
+  if (txt !== lastLive) {   // sentuh DOM hanya saat teks berubah (hemat)
+    lastLive = txt;
+    $('live').classList.toggle('on', on);
+    $('live').lastElementChild.textContent = txt;
+  }
+  requestAnimationFrame(loop);
+})();
+function pollUpdate() {
+  fetch('/api/status').then(r => r.json()).then(s => {
+    document.getElementById('ver').textContent = s.version;
+    if (s.obs) document.getElementById('obsfile').value = s.obs.trail;
+    const u = s.update && s.update.available, box = document.getElementById('upd');
+    box.hidden = !u;
+    if (u) {
+      document.getElementById('updtxt').textContent = 'Pembaruan v' + u.version + ' tersedia' + (s.update.ready ? ' (sudah diunduh)' : '') + '.';
+      document.getElementById('updnotes').href = u.page || '#';
+      document.getElementById('updbtn').hidden = !s.update.canInstall;
+    }
+  }).catch(() => {});
+}
+document.getElementById('updbtn').onclick = () => {
+  if (!confirm('Overlay akan terputus beberapa detik saat AimTrail memasang pembaruan dan menyala ulang. Lanjutkan?')) return;
+  fetch('/api/update/install', { method: 'POST' });
+  document.getElementById('updtxt').textContent = 'Memasang pembaruan... halaman akan memuat ulang sendiri.';
+  document.getElementById('updbtn').hidden = true;
+};
+pollUpdate(); setInterval(pollUpdate, 300000);
+
+build(); sync(); changed(false); status();
+setTimeout(demo, 500);
+</script>
+</body>
+</html>

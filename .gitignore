@@ -1,0 +1,10 @@
+__pycache__/
+.venv/
+.venv-build/
+build/
+dist/
+config.json
+keys.json
+settings.json
+*.log
+obs/

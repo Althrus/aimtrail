@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>AimTrail Keyboard &amp; Mouse Overlay</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #host { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+  #dbg { position: fixed; left: 10px; top: 8px; font: 12px/1.4 system-ui, sans-serif; color: #38bdf8; display: none; }
+</style>
+</head>
+<body>
+<div id="host"></div>
+<div id="dbg"></div>
+<script src="trail.js"></script>
+<script src="keys.js"></script>
+<script src="wm.js"></script>
+<script>
+  const host = document.getElementById('host');
+  AimTrail.startHeartbeat();   // dipakai pemuat OBS (file lokal) untuk mendeteksi halaman hidup
+  const view = new AimKeys.KeysView(host);
+  const wm = AimWM.mount(host);
+  const dbg = document.getElementById('dbg');
+  if (new URLSearchParams(location.search).has('debug')) dbg.style.display = 'block';
+
+  // Jika overlay ekor mouse juga aktif dan menampilkan watermark, overlay ini menyembunyikan miliknya (tidak ganda).
+  let trailCfg = {}, trailPeers = 0;
+  const syncWm = () => wm.setHidden(trailPeers > 0 && trailCfg.wm !== false);
+
+  AimTrail.connect({
+    sub: 'keys', role: 'overlay',
+    onStatus(ok) { dbg.textContent = ok ? 'AimKeys: terhubung' : 'AimKeys: menunggu server…'; },
+    onMessage(m) {
+      if (Array.isArray(m)) {
+        for (const e of m) {
+          if (e.t === 'k') view.key(e.k, !!e.d);
+          else if (e.t === 'b') view.buttons(e.b);
+          else if (e.t === 'w') view.wheel(e.v);
+        }
+      } else if (m.t === 'hello') {
+        trailCfg = m.config || {}; trailPeers = (m.peers || {}).trail | 0;
+        view.setConfig(m.kconfig || {}); wm.apply(view.cfg); syncWm();
+        view.clearInput();
+        (m.keys || []).forEach(vk => view.down.add(vk));
+        view.buttons(m.mask || 0);
+      } else if (m.t === 'kconfig') { view.setConfig(m.config || {}); wm.apply(view.cfg); syncWm(); }
+      else if (m.t === 'config') { trailCfg = m.config || {}; syncWm(); }
+      else if (m.t === 'peers') { trailPeers = m.trail | 0; syncWm(); }
+    }
+  });
+</script>
+</body>
+</html>
