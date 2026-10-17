@@ -9,7 +9,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.4.1"
+VERSION = "1.4.2"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 TIKTOK = "https://www.tiktok.com/@andromache.4k"
 TITLE = "AimTrail - Panduan Singkat"

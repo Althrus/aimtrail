@@ -1,6 +1,6 @@
 # AimTrail — overlay jejak mouse + tombol keyboard/mouse untuk live stream
 
-> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.4.1
+> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.4.2
 
 **Baru membuka? Baca panduan singkatnya:** `web/Panduan-AimTrail.pdf`, atau di aplikasi: menu tray → *Buka panduan* (`http://localhost:8765/manual.html`).
 
@@ -28,7 +28,7 @@ Tidak perlu memasang Python. Cukup jalankan **`AimTrail.exe`**: ikon muncul di s
 2. **GitHub Actions:** unggah proyek ini ke repositori GitHub, lalu jalankan workflow *Build AimTrail.exe*
    (tab Actions) atau buat tag `v1.4.0`; file `.exe` jadi artifact / lampiran Release otomatis
 3. **Installer (opsional):** setelah `build.bat`, buka `installer.iss` dengan [Inno Setup](https://jrsoftware.org/isinfo.php)
-   → Compile → `AimTrail-Setup-1.4.1.exe` (ada pilihan ikon desktop dan jalan otomatis)
+   → Compile → `AimTrail-Setup-1.4.2.exe` (ada pilihan ikon desktop dan jalan otomatis)
 
 **Penyimpanan:** versi `.exe` menyimpan pengaturan di `%APPDATA%\AimTrail` (`config.json`, `keys.json`,
 `settings.json`, `aimtrail.log`), jadi tetap aman saat `.exe` diganti dengan versi baru. Untuk memindahkan
