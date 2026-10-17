@@ -206,11 +206,33 @@ def apply(staged, exe_path):
     return old
 
 
+def relaunch_env(environ=None):
+    """Lingkungan bersih untuk proses baru.
+
+    .exe PyInstaller (onefile) mewariskan variabel _PYI_* / _MEIPASS2 yang menunjuk ke folder sementara milik proses lama.
+    Jika ikut diwariskan, salinan baru memakai folder itu dan ikut rusak begitu proses lama keluar -> aplikasi 'hilang'
+    setelah pembaruan. Karena itu variabel tersebut dibuang dan PYINSTALLER_RESET_ENVIRONMENT=1 diset (PyInstaller >= 6.9)
+    supaya salinan baru dianggap proses mandiri."""
+    env = {k: v for k, v in (environ if environ is not None else os.environ).items()
+           if not k.startswith("_PYI") and k != "_MEIPASS2"}
+    env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    return env
+
+
 def relaunch(exe_path):
     """Jalankan salinan baru; ia menunggu proses ini selesai (--wait-pid) sebelum mulai."""
+    exe = Path(exe_path)
     flags = (0x00000008 | 0x00000200) if IS_WIN else 0   # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
-    return subprocess.Popen([str(exe_path), "--minimized", "--wait-pid", str(os.getpid())],
-                            creationflags=flags, close_fds=True)
+    print(f"Menyalakan ulang: {exe} (pid lama {os.getpid()})")
+    return subprocess.Popen([str(exe), "--minimized", "--wait-pid", str(os.getpid())],
+                            creationflags=flags, close_fds=True, env=relaunch_env(), cwd=str(exe.parent),
+                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def relaunch_failed(proc, wait=3.0):
+    """True jika proses baru langsung mati (gagal menyala) dalam `wait` detik."""
+    time.sleep(wait)
+    return proc.poll() is not None
 
 
 def cleanup_old(exe_path):

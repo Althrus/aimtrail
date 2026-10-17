@@ -1,6 +1,6 @@
 ; Inno Setup (https://jrsoftware.org/isinfo.php) — jalankan setelah build.bat
 #define AppName "AimTrail"
-#define AppVersion "1.4.2"
+#define AppVersion "1.4.3"
 #define AppPublisher "Andromache"
 
 [Setup]

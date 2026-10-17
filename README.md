@@ -1,6 +1,6 @@
 # AimTrail — overlay jejak mouse + tombol keyboard/mouse untuk live stream
 
-> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.4.2
+> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.4.3
 
 **Baru membuka? Baca panduan singkatnya:** `web/Panduan-AimTrail.pdf`, atau di aplikasi: menu tray → *Buka panduan* (`http://localhost:8765/manual.html`).
 
@@ -28,7 +28,7 @@ Tidak perlu memasang Python. Cukup jalankan **`AimTrail.exe`**: ikon muncul di s
 2. **GitHub Actions:** unggah proyek ini ke repositori GitHub, lalu jalankan workflow *Build AimTrail.exe*
    (tab Actions) atau buat tag `v1.4.0`; file `.exe` jadi artifact / lampiran Release otomatis
 3. **Installer (opsional):** setelah `build.bat`, buka `installer.iss` dengan [Inno Setup](https://jrsoftware.org/isinfo.php)
-   → Compile → `AimTrail-Setup-1.4.2.exe` (ada pilihan ikon desktop dan jalan otomatis)
+   → Compile → `AimTrail-Setup-1.4.3.exe` (ada pilihan ikon desktop dan jalan otomatis)
 
 **Penyimpanan:** versi `.exe` menyimpan pengaturan di `%APPDATA%\AimTrail` (`config.json`, `keys.json`,
 `settings.json`, `aimtrail.log`), jadi tetap aman saat `.exe` diganti dengan versi baru. Untuk memindahkan
@@ -191,6 +191,7 @@ Kalau terasa kurang responsif, cek berurutan:
 |---|---|
 | Panel menulis "mode simulasi" | Bukan Windows atau Raw Input gagal; lihat `aimtrail.log` di folder pengaturan (menu tray → Buka folder pengaturan) |
 | Pengaturan di panel (mis. garis tepi) tidak terlihat di OBS | Halaman lama masih ter-cache di OBS: klik kanan Browser Source → Properties → **Refresh cache of current page**. Setelah itu halaman memuat ulang sendiri tiap kali server di-restart dengan file baru |
+| Setelah klik *Pasang*, AimTrail hilang dari tray dan tidak menyala sendiri | Versi baru sudah terpasang: buka `AimTrail.exe` lagi. Pembaruan dari versi sebelum 1.4.3 memang masih bisa begini (cara menyalakan ulang diperbaiki di 1.4.3); mulai 1.4.3 menyala otomatis, dan bila gagal AimTrail lama tetap berjalan serta memberi tahu. Detail ada di `aimtrail.log` |
 | Source OBS kosong/error setelah OBS dibuka sebelum AimTrail (harus dihapus & dibuat ulang) | Pakai mode **Local file** (bagian *Dipasang di OBS*). Untuk source berupa URL: klik kanan source → Refresh |
 | Overlay kosong di OBS | Buka URL di browser biasa dulu; tambahkan `?debug=1`; cek server masih berjalan |
 | Tidak bereaksi saat main | Game mungkin berjalan sebagai Administrator → jalankan AimTrail (`AimTrail.exe`/`start.bat`) sebagai Administrator juga |

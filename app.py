@@ -106,8 +106,24 @@ def already_running():
     import ctypes
     k32 = ctypes.windll.kernel32
     k32.CreateMutexW.restype = ctypes.c_void_p
-    _mutex = k32.CreateMutexW(None, False, "Local\\AimTrail.Singleton")
-    return k32.GetLastError() == 183  # ERROR_ALREADY_EXISTS
+    k32.CloseHandle.argtypes = [ctypes.c_void_p]
+    h = k32.CreateMutexW(None, False, "Local\\AimTrail.Singleton")
+    if k32.GetLastError() == 183:      # ERROR_ALREADY_EXISTS
+        if h:
+            k32.CloseHandle(h)         # jangan menahan mutex milik instance lain
+        return True
+    _mutex = h
+    return False
+
+
+def wait_for_slot(is_running, timeout=15.0, interval=0.5, sleep=time.sleep, clock=time.monotonic):
+    """Tunggu sampai instance lama benar-benar bebas (setelah pembaruan). True jika akhirnya bebas."""
+    end = clock() + timeout
+    while is_running():
+        if clock() >= end:
+            return False
+        sleep(interval)
+    return True
 
 
 def autostart_command():
@@ -144,7 +160,8 @@ def set_autostart(on):
 
 def copy_text(text):
     if IS_WIN:
-        subprocess.run(["clip"], input=text.encode("ascii", "ignore"), creationflags=0x08000000, check=False)
+        subprocess.run(["clip"], input=text.encode("ascii", "ignore"), creationflags=0x08000000, check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 # ----------------------------------------------------------------------------- tray app
@@ -319,7 +336,19 @@ class TrayApp:
                 self.notify(f"Pembaruan gagal: {e}")
                 return False
             self.notify("Pembaruan terpasang. AimTrail dimulai ulang...")
-            relaunch(exe)
+            try:
+                proc = relaunch(exe)
+                failed = updater.relaunch_failed(proc)
+            except Exception as e:  # noqa
+                print("Gagal menyalakan ulang:", repr(e))
+                proc, failed = None, True
+            if failed:
+                # Jangan menutup diri: biarkan versi yang sedang berjalan tetap hidup supaya overlay tidak mati.
+                print("Proses baru langsung berhenti; AimTrail lama tetap berjalan.")
+                updater.STATE.update(available=None, ready=False, staged=None)
+                self.notify("Pembaruan terpasang, tetapi AimTrail gagal menyala ulang otomatis. "
+                            "AimTrail ini tetap berjalan; tutup lalu buka AimTrail.exe saat siap.")
+                return False
             self.quit()
             return True
         finally:
@@ -442,6 +471,8 @@ class TrayApp:
 
     def _setup(self, icon):
         icon.visible = True
+        if getattr(self.args, "wait_pid", None):
+            self.notify(f"AimTrail diperbarui ke v{S.VERSION}.")
         if FROZEN:
             updater.cleanup_old(sys.executable)      # sisa file dari pembaruan sebelumnya
         updater.start_background(lambda: self.s, S.VERSION, self.on_update_found)
@@ -468,13 +499,20 @@ def main(argv=None):
     setup_logging(data)
 
     if args.wait_pid:
+        print(f"Setelah pembaruan: menunggu proses lama (pid {args.wait_pid}) selesai...")
         wait_pid(args.wait_pid)
+        time.sleep(1.0)                  # beri waktu bootloader lama membereskan folder sementaranya
     use_tray = IS_WIN and not args.no_tray
-    if use_tray and already_running():
+    busy = use_tray and already_running()
+    if busy and args.wait_pid:
+        busy = not wait_for_slot(already_running)   # instance lama belum bebas: tunggu sampai 15 dtk
+    if busy:
         port = load_settings(data)["port"]
         if not args.minimized:
             webbrowser.open(f"http://localhost:{port}/panel.html")
         return 0
+    if args.wait_pid:
+        print("Instance baru dimulai setelah pembaruan.")
 
     if not use_tray:
         S.configure(data)

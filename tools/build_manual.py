@@ -9,7 +9,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.4.2"
+VERSION = "1.4.3"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 TIKTOK = "https://www.tiktok.com/@andromache.4k"
 TITLE = "AimTrail - Panduan Singkat"
@@ -90,6 +90,7 @@ CONTENT = [
         ["Ekor muncul terus padahal tidak menekan apa pun", "Mode *Selalu aktif* sedang NYALA. Matikan lewat tombol di panel atau menu tray."],
         ["Pembaruan gagal atau tidak muncul", "Pastikan internet aktif. Menu tray > Pembaruan > Periksa pembaruan sekarang. Bila gagal, unduh manual di halaman Releases GitHub."],
         ["OBS dibuka sebelum AimTrail, source kosong / error", "Ganti source ke mode **Local file** (kartu *Anti-putus* di panel). Untuk source berupa URL: klik kanan source > Refresh, atau centang *Refresh browser when scene becomes active*."],
+        ["Setelah klik Pasang, AimTrail hilang dari tray", "Versi baru sudah terpasang: buka AimTrail.exe sekali lagi. Jika terulang, kirim file `aimtrail.log` (tray > Buka folder pengaturan) ke pembuat aplikasi."],
         ["Overlay kosong di OBS", "Buka URL di browser biasa; pastikan ikon AimTrail ada di tray."],
         ["Port 8765 dipakai aplikasi lain", "Ubah \"port\" di `settings.json`, jalankan ulang, lalu ubah URL di OBS."],
         ["SmartScreen / antivirus memberi peringatan", ".exe tidak bertanda tangan digital dan membaca input global. Kecualikan file AimTrail.exe; jangan mematikan antivirus."],
