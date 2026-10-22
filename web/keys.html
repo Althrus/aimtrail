@@ -13,19 +13,22 @@
 <div id="host"></div>
 <div id="dbg"></div>
 <script src="trail.js"></script>
+<script src="theme.js"></script>
+<script src="anim.js"></script>
 <script src="keys.js"></script>
 <script src="wm.js"></script>
 <script>
   const host = document.getElementById('host');
   AimTrail.startHeartbeat();   // dipakai pemuat OBS (file lokal) untuk mendeteksi halaman hidup
-  const view = new AimKeys.KeysView(host);
+  const view = new AimKeys.KeysView(host, { wait: true });
   const wm = AimWM.mount(host);
   const dbg = document.getElementById('dbg');
   if (new URLSearchParams(location.search).has('debug')) dbg.style.display = 'block';
 
-  // Jika overlay ekor mouse juga aktif dan menampilkan watermark, overlay ini menyembunyikan miliknya (tidak ganda).
-  let trailCfg = {}, trailPeers = 0;
-  const syncWm = () => wm.setHidden(trailPeers > 0 && trailCfg.wm !== false);
+  // Hanya satu overlay yang menampilkan watermark (yang berprioritas lebih tinggi bila ikut terhubung).
+  let cfgs = {}, peers = {};
+  const syncWm = () => wm.setHidden(AimWM.shouldHide('keys', peers, cfgs));
+  const theme = () => AimTheme.merge(cfgs.tconfig);
 
   AimTrail.connect({
     sub: 'keys', role: 'overlay',
@@ -38,14 +41,15 @@
           else if (e.t === 'w') view.wheel(e.v);
         }
       } else if (m.t === 'hello') {
-        trailCfg = m.config || {}; trailPeers = (m.peers || {}).trail | 0;
-        view.setConfig(m.kconfig || {}); wm.apply(view.cfg); syncWm();
+        cfgs = { config: m.config, kconfig: m.kconfig, mconfig: m.mconfig, pconfig: m.pconfig, tconfig: m.tconfig }; peers = m.peers || {};
+        view.theme = theme(); view.setConfig(m.kconfig || {}); wm.apply(view.cfg); syncWm(); view.start();
         view.clearInput();
         (m.keys || []).forEach(vk => view.down.add(vk));
         view.buttons(m.mask || 0);
-      } else if (m.t === 'kconfig') { view.setConfig(m.config || {}); wm.apply(view.cfg); syncWm(); }
-      else if (m.t === 'config') { trailCfg = m.config || {}; syncWm(); }
-      else if (m.t === 'peers') { trailPeers = m.trail | 0; syncWm(); }
+      } else if (m.t === 'kconfig') { cfgs.kconfig = m.config; view.setConfig(m.config || {}); wm.apply(view.cfg); syncWm(); }
+      else if (m.t === 'tconfig') { cfgs.tconfig = m.config; view.setTheme(theme()); }
+      else if (m.t === 'config' || m.t === 'mconfig' || m.t === 'pconfig') { cfgs[m.t] = m.config; syncWm(); }
+      else if (m.t === 'peers') { peers = m; syncWm(); }
     }
   });
 </script>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>AimTrail Controller Overlay</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #host { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+</style>
+</head>
+<body>
+<div id="host"></div>
+<script src="trail.js"></script>
+<script src="theme.js"></script>
+<script src="anim.js"></script>
+<script src="wm.js"></script>
+<script src="pad.js"></script>
+<script>
+  const host = document.getElementById('host');
+  AimTrail.startHeartbeat();
+  const view = new AimPad.PadView(host, { wait: true });
+  const wm = AimWM.mount(host);
+  let cfgs = {}, peers = {};
+  const syncWm = () => wm.setHidden(AimWM.shouldHide('pad', peers, cfgs));
+  const theme = () => AimTheme.merge(cfgs.tconfig);
+
+  AimTrail.connect({
+    sub: 'pad', role: 'overlay',
+    onMessage(m) {
+      if (Array.isArray(m)) {
+        view.feed(m);
+      } else if (m.t === 'hello') {
+        cfgs = { config: m.config, kconfig: m.kconfig, mconfig: m.mconfig, pconfig: m.pconfig, tconfig: m.tconfig };
+        peers = m.peers || {};
+        view.setTheme(theme()); view.setConfig(m.pconfig || {}); wm.apply(view.cfg); syncWm(); view.start();
+        view.setPads(m.pads);
+      } else if (m.t === 'pconfig') { cfgs.pconfig = m.config; view.setConfig(m.config || {}); wm.apply(view.cfg); syncWm(); }
+      else if (m.t === 'tconfig') { cfgs.tconfig = m.config; view.setTheme(theme()); }
+      else if (m.t === 'config' || m.t === 'kconfig' || m.t === 'mconfig' || m.t === 'pconfig') { cfgs[m.t] = m.config; syncWm(); }
+      else if (m.t === 'peers') { peers = m; syncWm(); }
+    }
+  });
+</script>
+</body>
+</html>

@@ -228,6 +228,11 @@ class TrayApp:
         return M(
             I("Buka panel ekor mouse", self.open_trail, default=True),
             I("Buka panel keyboard + mouse", self.open_keys),
+            I("Panel lainnya", M(
+                I("Metrik live", lambda i=None, it=None: webbrowser.open(self.url("metrics-panel.html"))),
+                I("Controller", lambda i=None, it=None: webbrowser.open(self.url("pad-panel.html"))),
+                I("Tema & animasi", lambda i=None, it=None: webbrowser.open(self.url("tema.html"))),
+            )),
             I("Buka panduan (manual)", self.open_manual),
             M.SEPARATOR,
             I("Ekor mouse selalu aktif (tanpa klik)", self.toggle_always, checked=lambda i: self.always_on()),
@@ -237,6 +242,8 @@ class TrayApp:
             I("File OBS anti-putus", M(
                 I("Salin lokasi file: ekor mouse", self.copy_file_trail),
                 I("Salin lokasi file: keyboard + mouse", self.copy_file_keys),
+                I("Salin lokasi file: metrik", self.copy_file_metrics),
+                I("Salin lokasi file: controller", self.copy_file_pad),
                 I("Buka folder file OBS", self.open_obs_folder),
             )),
             M.SEPARATOR,
@@ -376,6 +383,16 @@ class TrayApp:
 
     def copy_file_keys(self, icon=None, item=None):
         p = self._obs_file(1)
+        copy_text(p)
+        self.notify(f"Lokasi file disalin. Di OBS centang Local file lalu tempel: {p}")
+
+    def copy_file_metrics(self, icon=None, item=None):
+        p = self._obs_file(2)
+        copy_text(p)
+        self.notify(f"Lokasi file disalin. Di OBS centang Local file lalu tempel: {p}")
+
+    def copy_file_pad(self, icon=None, item=None):
+        p = self._obs_file(3)
         copy_text(p)
         self.notify(f"Lokasi file disalin. Di OBS centang Local file lalu tempel: {p}")
 

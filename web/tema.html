@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AimTrail — Tema & Animasi</title>
+<link rel="stylesheet" href="panel.css">
+<style>
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #stage .layer, #stage canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .preview[data-bg="white"] { background-color: #f1f5f9; background-image: none; }
+  .preview[data-bg="black"] { background-color: #000; background-image: none; }
+  .preview[data-bg="game"] { background-image: linear-gradient(135deg, #1b2a1f, #3b2f22 55%, #20283b); background-size: auto; }
+  .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+  .card .bar { margin-top: 8px; }
+  .chk { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>AimTrail</h1>
+  <nav id="nav"></nav>
+  <span class="pill" id="status"><i></i><span>Menunggu server…</span></span>
+</header>
+<script src="nav.js"></script>
+<main>
+  <section class="left">
+    <div class="preview" id="pv" data-bg="game">
+      <div id="stage"><canvas id="glow"></canvas><canvas id="main"></canvas>
+        <div class="layer" id="lkeys"></div><div class="layer" id="lmetrics"></div><div class="layer" id="lpad"></div></div>
+    </div>
+    <p class="hint">Pratinjau memperlihatkan semua overlay sekaligus dengan tema yang sama. Ubah di kanan, hasilnya langsung terlihat.</p>
+    <div class="bar">
+      <button class="primary" id="anim">Putar animasi masuk/keluar</button>
+      <select id="pvbg" aria-label="Latar preview">
+        <option value="game">Latar: mirip game</option><option value="grid">Latar: grid</option>
+        <option value="white">Latar: terang</option><option value="black">Latar: hitam</option>
+      </select>
+    </div>
+    <div class="card">
+      <h2>Overlay lama ikut tema</h2>
+      <p class="note" style="margin-top:0">Overlay <b>Metrik</b> dan <b>Controller</b> selalu memakai tema ini. Untuk overlay yang sudah punya gaya sendiri, pilih apakah mengikuti tema (warna dan huruf di pengaturan masing-masing diabaikan).</p>
+      <label class="chk"><input type="checkbox" id="useTrail"> Ekor mouse ikut tema</label>
+      <label class="chk"><input type="checkbox" id="useKeys"> Keyboard + mouse ikut tema</label>
+    </div>
+    <div class="card"><h2>Preset tema</h2><div class="chips" id="presets"></div></div>
+    <div class="card">
+      <h2>Simpan &amp; muat</h2>
+      <div class="bar"><button id="export">Ekspor JSON</button><button id="import">Impor JSON</button><button id="reset">Kembalikan default</button>
+        <input type="file" id="file" accept="application/json" hidden></div>
+    </div>
+  </section>
+  <section class="right" id="controls"></section>
+</main>
+<footer class="credit">Created by <b>Andromache</b> · TikTok <a href="https://www.tiktok.com/@andromache.4k" target="_blank" rel="noopener">@andromache.4k</a> · <a href="/manual.html">Panduan</a> · v<span id="ver">-</span></footer>
+<script src="trail.js"></script>
+<script src="theme.js"></script>
+<script src="anim.js"></script>
+<script src="keys.js"></script>
+<script src="metrics.js"></script>
+<script src="pad.js"></script>
+<script>
+const $ = id => document.getElementById(id), K = AimKeys;
+const SW = 1920, SH = 1080; let scale = 1, connected = false, source = '';
+let theme = AimTheme.merge({}), cfgs = {};
+
+/* ---- semua overlay di satu panggung ---- */
+const trail = new AimTrail.AimTrail($('main'), $('glow')); trail.resize(SW, SH, 1);
+trail.setConfig({ useTheme: true, alwaysOn: true, boundary: 'lock', ripple: false, originY: 0.55, uiScale: 1.4 });
+const KEYS = [['W', 1, 0], ['A', 0, 1], ['S', 1, 1], ['D', 2, 1]].map(([id, x, y]) => ({ id, x, y, w: 1, h: 1 })).concat([{ id: 'SHIFT', x: 0, y: 2, w: 1.5, h: 1 }, { id: 'SPACE', x: 1.5, y: 2, w: 1.5, h: 1 }]);
+const keys = new AimKeys.KeysView($('lkeys'), {}); keys.cfg = Object.assign({}, keys.cfg); keys.setConfig({ useTheme: true, keys: KEYS, mouseShow: true, mouseX: 3.6, scale: 1, posX: 4, posY: 94, wm: false });
+const metrics = new AimMetrics.MetricsView($('lmetrics'), {}); metrics.setConfig({ scale: 0.95, posX: 50, posY: 4 });
+const pad = new AimPad.PadView($('lpad'), {}); pad.setConfig({ scale: 0.7, posX: 97, posY: 96 });
+const views = [keys, metrics, pad];
+function applyTheme() { trail.setTheme(theme); keys.setTheme(theme); metrics.setTheme(theme); pad.setTheme(theme); }
+applyTheme();
+
+function layout() {
+  scale = $('pv').clientWidth / SW;
+  const st = $('stage'); st.style.width = SW + 'px'; st.style.height = SH + 'px'; st.style.transform = `scale(${scale})`;
+  $('pv').style.height = (SH * scale) + 'px'; views.forEach(v => v.place());
+}
+new ResizeObserver(layout).observe($('pv')); layout();
+$('pvbg').onchange = e => { $('pv').dataset.bg = e.target.value; };
+
+/* ---- kontrol + kirim ke server ---- */
+let timer; const push = () => { clearTimeout(timer); timer = setTimeout(() => net.send({ t: 'tconfig', config: theme }), 150); };
+const controls = K.buildControls($('controls'), AimTheme.SCHEMA, () => theme, (k, v) => { theme[k] = v; applyTheme(); push(); });
+const colorBase = Object.fromEntries(Object.entries(AimTheme.DEFAULT).filter(([k]) => !/^anim|^ease/.test(k)));
+$('presets').innerHTML = Object.keys(AimTheme.PRESETS).map(n => `<button data-p="${n}">${n}</button>`).join('');
+$('presets').onclick = e => { const n = e.target.dataset.p; if (!n) return; Object.assign(theme, colorBase, AimTheme.PRESETS[n]); controls.sync(); applyTheme(); push(); };
+$('reset').onclick = () => { theme = AimTheme.merge({}); controls.sync(); applyTheme(); push(); };
+$('export').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(theme, null, 2)], { type: 'application/json' })); a.download = 'aimtrail-tema.json'; a.click(); URL.revokeObjectURL(a.href); };
+$('import').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const o = JSON.parse(await f.text()), clean = {}; for (const k in AimTheme.DEFAULT) if (k in o && typeof o[k] === typeof AimTheme.DEFAULT[k]) clean[k] = o[k];
+    Object.assign(theme, clean); controls.sync(); applyTheme(); push(); } catch (_) { alert('File tidak valid.'); }
+  e.target.value = '';
+};
+let animLock = false;   // selama pratinjau animasi, data demo dijeda agar overlay tidak langsung muncul lagi
+$('anim').onclick = () => {
+  animLock = true;
+  views.forEach(v => v.anim && v.anim.hide(theme));
+  setTimeout(() => { views.forEach(v => v.anim && v.anim.show(theme)); setTimeout(() => { animLock = false; }, (theme.animMs || 0) + 150); }, (theme.animMs || 0) + 500);
+};
+function useToggle(id, name) {
+  $(id).onchange = e => { const c = Object.assign({}, cfgs[name], { useTheme: e.target.checked }); cfgs[name] = c; net.send({ t: name, config: c }); };
+}
+useToggle('useTrail', 'config'); useToggle('useKeys', 'kconfig');
+const syncUse = () => { $('useTrail').checked = !!(cfgs.config || {}).useTheme; $('useKeys').checked = !!(cfgs.kconfig || {}).useTheme; };
+
+const net = AimTrail.connect({
+  sub: 'cfg',
+  onStatus(ok) { connected = ok; $('status').classList.toggle('on', ok); $('status').lastElementChild.textContent = ok ? 'Terhubung' : 'Menunggu server…'; },
+  onMessage(m) {
+    if (m.t === 'hello') { cfgs = { config: m.config || {}, kconfig: m.kconfig || {} }; theme = AimTheme.merge(m.tconfig); controls.sync(); applyTheme(); syncUse(); }
+    else if (m.t === 'tconfig') { theme = AimTheme.merge(m.config); controls.sync(); applyTheme(); }
+    else if (m.t === 'config' || m.t === 'kconfig') { cfgs[m.t] = m.config; syncUse(); }
+  }
+});
+
+/* ---- demo: semua pratinjau bergerak ---- */
+let n = 0, holdUntil = 0, nextClick = 300, keyDown = null, padBtn = 0, padUntil = 0;
+const VKS = [87, 65, 83, 68, 16, 32], BT = Object.values(AimPad.BTN);
+setInterval(() => {
+  const now = performance.now(), t = n++ * 0.016;
+  const dx = Math.cos(t * 2.2) * 15 + Math.sin(t * 7) * 5, dy = Math.sin(t * 1.6) * 11 + 3;
+  trail.move(dx, dy, 16, now);
+  if (animLock) return;
+  metrics.move(dx, dy, 16, now);
+  if (n * 16 > nextClick) { metrics.buttons(1, now); holdUntil = now + 90 + Math.random() * 280; nextClick += 150 + Math.random() * 420; }
+  if (holdUntil && now > holdUntil) { metrics.buttons(0, now); holdUntil = 0; }
+  if (n % 18 === 0) { if (keyDown) keys.key(keyDown, false); keyDown = Math.random() < 0.8 ? VKS[Math.random() * VKS.length | 0] : null; if (keyDown) keys.key(keyDown, true); }
+  if (t > padUntil) { padBtn = Math.random() < 0.65 ? BT[Math.random() * BT.length | 0] : 0; padUntil = t + 0.25 + Math.random() * 0.5; }
+  pad.pads[0] = { b: padBtn, lt: Math.max(0, Math.sin(t * 1.3)) * 255 | 0, rt: Math.max(0, Math.sin(t * 0.9 + 1)) * 255 | 0,
+    lx: Math.cos(t * 1.7) * 24000, ly: Math.sin(t * 1.1) * 18000, rx: Math.cos(t * 0.8) * 26000, ry: Math.sin(t * 1.9) * 12000 };
+  pad.touch(); pad.schedule();
+}, 16);
+setInterval(() => { if (!animLock) metrics.tick(performance.now()); }, 100);
+(function loop() { trail.frame(performance.now()); requestAnimationFrame(loop); })();
+fetch('/api/status').then(r => r.json()).then(s => { $('ver').textContent = s.version; }).catch(() => {});
+</script>
+</body>
+</html>

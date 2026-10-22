@@ -41,7 +41,7 @@ const LAYOUTS = {
 };
 
 const DEFAULTS = {
-  look: 'neon', anim: 'press', pressMs: 60, releaseMs: 180,
+  useTheme: false, look: 'neon', anim: 'press', pressMs: 60, releaseMs: 180,
   unit: 56, gap: 6, radius: 10, borderWidth: 2,
   fontFamily: 'ui', fontScale: 0.3, fontWeight: 600, uppercase: true, showLabels: true,
   idleBg: '#0f1b2e', idleOpacity: 0.78, idleBorder: '#263243', idleText: '#8aa0b8',
@@ -57,7 +57,7 @@ const DEFAULTS = {
 };
 
 // kunci yang TIDAK ikut berubah saat memilih preset gaya
-const LAYOUT_KEYS = new Set(['wm', 'wmPos', 'wmOpacity', 'wmScale', 'wmMargin', 'keys', 'mouseShow', 'mouseScale', 'mouseX', 'mouseY', 'scale', 'posX', 'posY',
+const LAYOUT_KEYS = new Set(['useTheme', 'wm', 'wmPos', 'wmOpacity', 'wmScale', 'wmMargin', 'keys', 'mouseShow', 'mouseScale', 'mouseX', 'mouseY', 'scale', 'posX', 'posY',
   'unit', 'gap', 'autoHide', 'autoHideSec', 'panel', 'panelColor', 'panelOpacity', 'panelRadius', 'panelPad',
   'panelBorderWidth', 'panelBorderColor']);
 
@@ -94,6 +94,7 @@ const SCHEMA = [
     { k: 'uppercase', l: 'Huruf kapital', t: 'check' }
   ] },
   { g: 'Warna', items: [
+    { k: 'useTheme', l: 'Ikuti tema bersama (abaikan warna di bawah)', t: 'check' },
     { k: 'idleBg', l: 'Latar tombol (diam)', t: 'color' },
     { k: 'idleOpacity', l: 'Opasitas latar tombol', t: 'range', min: 0, max: 1, step: 0.01, p: 1 },
     { k: 'idleBorder', l: 'Garis tepi (diam)', t: 'color' },
@@ -157,7 +158,7 @@ const watchList = cfg => [...new Set((cfg.keys || []).map(k => KEYDEFS[k.id] && 
 const CSS = `
 .kv-root{position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden}
 .kv-board{position:absolute;transform-origin:0 0;box-sizing:border-box;transition:opacity .35s}
-.kv-hide{opacity:0}
+.kv-wrap{position:absolute;left:0;top:0}
 .kv-board *{box-sizing:border-box}
 .kv-i{background:var(--ibg);border:var(--bw) solid var(--ib);color:var(--it);
   transition-property:background-color,border-color,color,box-shadow,transform;transition-duration:var(--rel);transition-timing-function:ease-out}
@@ -197,13 +198,25 @@ class KeysView {
     ensureCss();
     this.host = host; this.opts = opts || {};
     this.cfg = JSON.parse(JSON.stringify(DEFAULTS));
-    this.down = new Set(); this.mask = 0; this.sel = null; this.frozen = null;
+    this.down = new Set(); this.mask = 0; this.sel = null; this.frozen = null; this.theme = null; this._visible = null; this._started = !(opts && opts.wait);
     this.rootEl = el('div', 'kv-root' + (this.opts.editable ? ' kv-edit' : ''));
     host.appendChild(this.rootEl);
     this.lastAct = performance.now();
     this._onResize = () => this.place();
     window.addEventListener('resize', this._onResize);
     this.build();
+  }
+
+  /** Overlay (Browser Source): tampil dengan animasi masuk setelah pengaturan & tema pertama diterima. */
+  start() {
+    if (this._started) return;
+    this._started = true;
+    if (this.anim) { this.anim.show(this.theme, !!this.opts.editable); this._visible = this.anim.visible; }
+  }
+
+  setTheme(t) { this.theme = t; this.build(); }
+  effCfg() {   // pengaturan efektif: bila "ikuti tema" aktif, warna/huruf diambil dari tema bersama
+    return this.cfg.useTheme && this.theme && root.AimTheme ? Object.assign({}, this.cfg, root.AimTheme.keysOverrides(this.theme)) : this.cfg;
   }
 
   setConfig(c) {
@@ -215,7 +228,7 @@ class KeysView {
 
   /* --- membangun DOM --- */
   build() {
-    const c = this.cfg, u = c.unit;
+    const c = this.effCfg(), u = c.unit;
     this.rootEl.innerHTML = '';
     const b = this.board = el('div', `kv-board kv-look-${c.look} kv-anim-${c.anim}`);
     const st = b.style;
@@ -244,10 +257,18 @@ class KeysView {
     }
     this.mouseEls = [];
     if (c.mouseShow) this._mouse();
-    this.rootEl.appendChild(b);
+    const wrap = this.wrap = el('div', 'kv-wrap');   // pembungkus: dianimasikan masuk/keluar (papan punya transform sendiri)
+    wrap.appendChild(b); this.rootEl.appendChild(wrap);
+    this.anim = root.AimAnim ? root.AimAnim.make(wrap) : null;
     clearInterval(this._tm);   // timer sembunyi-otomatis hanya berjalan bila fitur dipakai
     this._tm = c.autoHide && !this.opts.editable ? setInterval(() => this._tick(), 200) : 0;
     this.place(); this.refresh();
+    if (this.anim && !this._started) wrap.style.visibility = 'hidden';   // menunggu start()
+    else if (this.anim) {   // animasi hanya pada kemunculan pertama; perubahan pengaturan tidak mengulang animasi
+      const first = this._visible === null;
+      if (this._visible === false) this.anim.hide(this.theme, true); else this.anim.show(this.theme, !first || this.opts.editable);
+      this._visible = this.anim.visible;
+    }
     if (this.sel) this.select(this.sel, true);
   }
 
@@ -287,11 +308,12 @@ class KeysView {
     const c = this.cfg, ex = this.frozen || this._extentPx();
     const bw = ex.w + this.pad * 2, bh = ex.h + this.pad * 2;
     const vw = this.host.clientWidth || window.innerWidth, vh = this.host.clientHeight || window.innerHeight;
-    const s = this.board.style;
-    s.width = bw + 'px'; s.height = bh + 'px';
-    s.left = ((vw - bw * c.scale) * c.posX / 100) + 'px';
-    s.top = ((vh - bh * c.scale) * c.posY / 100) + 'px';
+    const s = this.board.style, w = this.wrap.style;
+    s.width = bw + 'px'; s.height = bh + 'px'; s.left = '0px'; s.top = '0px';
     s.transform = `scale(${c.scale})`;
+    w.width = (bw * c.scale) + 'px'; w.height = (bh * c.scale) + 'px';
+    w.left = ((vw - bw * c.scale) * c.posX / 100) + 'px';
+    w.top = ((vh - bh * c.scale) * c.posY / 100) + 'px';
   }
 
   /* --- status input --- */
@@ -307,7 +329,11 @@ class KeysView {
     w.classList.add(v > 0 ? 'kv-up' : 'kv-dn');
     clearTimeout(this._wt); this._wt = setTimeout(() => w.classList.remove('kv-up', 'kv-dn'), 150);
   }
-  touch() { this.lastAct = performance.now(); }
+  touch() {
+    this.lastAct = performance.now();
+    // tersembunyi (sembunyi-otomatis) -> langsung muncul begitu ada aktivitas
+    if (this.anim && this._started && !this.opts.editable && this.anim.visible === false) { this.anim.show(this.theme); this._visible = true; }
+  }
   clearInput() { this.down.clear(); this.mask = 0; this.refresh(); }
   refresh() {
     for (const k of this.keyEls) k.el.classList.toggle('kv-on', this.down.has(k.vk));
@@ -316,7 +342,7 @@ class KeysView {
   _tick() {
     if (!this.board || this.opts.editable) return;
     const idle = this.cfg.autoHide && !this.down.size && !this.mask && performance.now() - this.lastAct > this.cfg.autoHideSec * 1000;
-    this.board.classList.toggle('kv-hide', !!idle);
+    if (this.anim) { if (idle) this.anim.hide(this.theme); else this.anim.show(this.theme); this._visible = this.anim.visible; }
   }
 
   /* --- mode edit (panel): pilih & geser --- */

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AimTrail — Controller</title>
+<link rel="stylesheet" href="panel.css">
+<style>
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .preview[data-bg="white"] { background-color: #f1f5f9; background-image: none; }
+  .preview[data-bg="black"] { background-color: #000; background-image: none; }
+  .preview[data-bg="game"] { background-image: linear-gradient(135deg, #1b2a1f, #3b2f22 55%, #20283b); background-size: auto; }
+  .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+  .card .bar { margin-top: 8px; }
+  .chips + .note { margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AimTrail</h1>
+  <nav id="nav"></nav>
+  <span class="pill" id="status"><i></i><span>Menunggu server…</span></span>
+</header>
+<script src="nav.js"></script>
+<main>
+  <section class="left">
+    <div class="preview" id="pv" data-bg="grid"><div id="stage"></div></div>
+    <p class="hint" id="hint">Tekan tombol controller (Xbox / kompatibel XInput): preview menyala. Atau tekan Putar demo.</p>
+    <div class="bar">
+      <button class="primary" id="demo">Putar demo</button>
+      <select id="pvbg" aria-label="Latar preview">
+        <option value="grid">Latar: grid</option><option value="game">Latar: mirip game</option>
+        <option value="white">Latar: terang</option><option value="black">Latar: hitam</option>
+      </select>
+    </div>
+    <div class="card">
+      <h2>URL untuk OBS (Browser Source terpisah)</h2>
+      <div class="url"><input type="text" id="obsurl" readonly><button id="copy">Salin</button></div>
+    </div>
+    <div class="card">
+      <h2>Anti-putus untuk OBS (disarankan)</h2>
+      <p class="note" style="margin-top:0">Di Browser Source OBS centang <b>Local file</b>, lalu pilih file di bawah. Overlay tetap tersambung walau OBS dibuka sebelum AimTrail.</p>
+      <div class="url"><input type="text" id="obsfile" readonly><button id="copyfile">Salin lokasi</button></div>
+    </div>
+    <div class="card"><h2>Catatan</h2>
+      <p class="note" style="margin-top:0">Mendukung controller Xbox dan yang kompatibel XInput. Controller PlayStation atau Switch Pro bisa dipakai lewat Steam Input atau DS4Windows
+      (pilih label <b>PlayStation</b> agar simbolnya sesuai). AimTrail hanya <b>membaca</b> controller, tidak mengirim apa pun ke game.</p></div>
+  </section>
+  <section class="right" id="controls"></section>
+</main>
+<footer class="credit">Created by <b>Andromache</b> · TikTok <a href="https://www.tiktok.com/@andromache.4k" target="_blank" rel="noopener">@andromache.4k</a> · <a href="/manual.html">Panduan</a> · v<span id="ver">-</span></footer>
+<script src="trail.js"></script>
+<script src="theme.js"></script>
+<script src="anim.js"></script>
+<script src="keys.js"></script>
+<script src="wm.js"></script>
+<script src="pad.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let connected = false, source = '';
+const SW = 1920, SH = 1080; let scale = 1;
+function layout() {
+  scale = $('pv').clientWidth / SW;
+  const st = $('stage'); st.style.width = SW + 'px'; st.style.height = SH + 'px'; st.style.transform = `scale(${scale})`;
+  $('pv').style.height = (SH * scale) + 'px';
+  if (window.onLayout) window.onLayout();
+}
+new ResizeObserver(layout).observe($('pv')); layout();
+$('pvbg').onchange = e => { $('pv').dataset.bg = e.target.value; };
+function status() {
+  $('status').classList.toggle('on', connected);
+  $('status').lastElementChild.textContent = connected ? 'Terhubung · ' + (source === 'rawinput' ? 'perangkat asli' : 'mode simulasi') : 'Menunggu server…';
+}
+$('obsurl').value = location.origin + '/pad.html';
+const flash = (b, t) => { b.textContent = 'Tersalin'; setTimeout(() => b.textContent = t, 1200); };
+const clip = async (inp, btn, t) => { try { await navigator.clipboard.writeText(inp.value); } catch (_) { inp.select(); document.execCommand('copy'); } flash(btn, t); };
+$('copy').onclick = () => clip($('obsurl'), $('copy'), 'Salin');
+$('copyfile').onclick = () => clip($('obsfile'), $('copyfile'), 'Salin lokasi');
+fetch('/api/status').then(r => r.json()).then(s => { $('ver').textContent = s.version; if (s.obs) $('obsfile').value = s.obs['pad'] || ''; }).catch(() => {});
+const K = AimKeys, view = new AimPad.PadView($('stage'), { editable: true }), wm = AimWM.mount($('stage'));
+let cfgs = {}; const theme = () => AimTheme.merge(cfgs.tconfig);
+let timer; const push = () => { clearTimeout(timer); timer = setTimeout(() => net.send({ t: 'pconfig', config: view.cfg }), 150); };
+const controls = K.buildControls($('controls'), AimPad.SCHEMA, () => view.cfg, (k, v) => {
+  view.setConfig(Object.assign({}, view.cfg, { [k]: v })); wm.apply(view.cfg); push();
+});
+function apply(c) { view.setConfig(c || {}); controls.sync(); wm.apply(view.cfg); }
+const net = AimTrail.connect({
+  sub: 'pad',
+  onStatus(ok) { connected = ok; status(); },
+  onMessage(m) {
+    if (Array.isArray(m)) return view.feed(m);
+    if (m.t === 'hello') { source = m.src; status(); cfgs = { tconfig: m.tconfig }; view.setTheme(theme()); apply(m.pconfig); view.setPads(m.pads); }
+    else if (m.t === 'pconfig') apply(m.config);
+    else if (m.t === 'tconfig') { cfgs.tconfig = m.config; view.setTheme(theme()); }
+  }
+});
+let demoT; const BT = Object.values(AimPad.BTN);
+$('demo').onclick = () => {
+  clearInterval(demoT); const t0 = performance.now(); let btn = 0, until = 0;
+  demoT = setInterval(() => {
+    const t = (performance.now() - t0) / 1000;
+    if (t > until) { btn = Math.random() < 0.65 ? BT[Math.random() * BT.length | 0] : 0; until = t + 0.2 + Math.random() * 0.5; }
+    view.pads[0] = { b: btn, lt: Math.max(0, Math.sin(t * 1.3)) * 255 | 0, rt: Math.max(0, Math.sin(t * 0.9 + 1)) * 255 | 0,
+      lx: Math.cos(t * 1.7) * 24000, ly: Math.sin(t * 1.1) * 18000, rx: Math.cos(t * 0.8) * 26000, ry: Math.sin(t * 1.9) * 12000 };
+    view.touch(); view.schedule();
+    if (t > 7) { clearInterval(demoT); }
+  }, 33);
+};
+setTimeout(() => $('demo').click(), 600); status();
+</script>
+</body>
+</html>

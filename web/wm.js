@@ -33,5 +33,14 @@ function mount(host) {
     setHidden(h) { this.hidden = !!h; this.apply(); }
   };
 }
-root.AimWM = { mount };
+/** Hanya satu overlay yang menampilkan watermark: yang berprioritas tertinggi di antara yang terhubung. */
+const ORDER = ['trail', 'keys', 'metrics', 'pad'], CFGKEY = { trail: 'config', keys: 'kconfig', metrics: 'mconfig', pad: 'pconfig' };
+function shouldHide(me, peers, cfgs) {
+  for (const k of ORDER) {
+    if (k === me) break;
+    if (((peers || {})[k] | 0) > 0 && ((cfgs || {})[CFGKEY[k]] || {}).wm !== false) return true;
+  }
+  return false;
+}
+root.AimWM = { mount, shouldHide };
 })(window);

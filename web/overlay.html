@@ -15,6 +15,7 @@
 <div id="frame" style="display:none"></div>
 <div id="dbg"></div>
 <script src="trail.js"></script>
+<script src="theme.js"></script>
 <script src="wm.js"></script>
 <script>
   const A = AimTrail;
@@ -44,7 +45,9 @@
     onStatus(ok) { up = ok; },
     onMessage(m) {
       if (Array.isArray(m)) { evCount += m.length; A.handleEvents(r, m, performance.now()); kick(); return; }
+      if (m.t === 'tconfig') { r.setTheme(AimTheme.merge(m.config)); kick(); return; }
       if (m.t === 'hello' || m.t === 'config') {
+        if (m.tconfig || m.t === 'hello') r.setTheme(AimTheme.merge(m.tconfig));
         r.setConfig(m.config || {});
         A.applyBackground(document.body, r.cfg);
         A.applyBorder(document.getElementById('frame'), r.cfg);

@@ -1,23 +1,37 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Membuat manual dari satu sumber isi:
-     web/manual.html             (halaman panduan di dalam aplikasi)
-     web/Panduan-AimTrail.pdf    (PDF untuk dibagikan)
+"""Membuat manual dua bahasa dari satu sumber isi:
+     web/manual.html + web/Panduan-AimTrail.pdf     (Indonesia)
+     web/manual.en.html + web/AimTrail-Guide.pdf    (English)
 Jalankan dari folder proyek:  python tools/build_manual.py      (butuh: pip install reportlab)"""
 import re
+import sys
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from manual_en import CONTENT_EN  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.4.3"
+VERSION = "1.5.0"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 TIKTOK = "https://www.tiktok.com/@andromache.4k"
-TITLE = "AimTrail - Panduan Singkat"
-SUB = "Ekor gerakan mouse + tampilan tombol keyboard & mouse untuk live stream (OBS dan software lain)"
+
+LANG = {
+    "id": dict(title="AimTrail - Panduan Singkat", hero="Panduan Singkat", html="manual.html", pdf="Panduan-AimTrail.pdf", dl="Unduh PDF", page="Halaman",
+               sub="Ekor gerakan mouse, tombol keyboard & mouse, metrik, dan controller untuk live stream (OBS dan software lain)",
+               nav=[("/panel.html", "Ekor mouse"), ("/keys-panel.html", "Keyboard & mouse"), ("/metrics-panel.html", "Metrik"), ("/pad-panel.html", "Controller"),
+                    ("/tema.html", "Tema"), ("/manual.html", "Panduan")], other=("/manual.en.html", "English"), version="Versi", lang="id"),
+    "en": dict(title="AimTrail - Quick Guide", hero="Quick Guide", html="manual.en.html", pdf="AimTrail-Guide.pdf", dl="Download PDF", page="Page",
+               sub="Mouse trail, keyboard & mouse display, live metrics and controller overlays for live streaming (OBS and other software)",
+               nav=[("/panel.html", "Mouse trail"), ("/keys-panel.html", "Keyboard & mouse"), ("/metrics-panel.html", "Metrics"), ("/pad-panel.html", "Controller"),
+                    ("/tema.html", "Theme"), ("/manual.en.html", "Guide")], other=("/manual.html", "Bahasa Indonesia"), version="Version", lang="en"),
+}
+CONTENTS = {}
 
 # ---- isi: ('h', judul) ('p', teks) ('ol'|'ul', [item]) ('table', [header], [[sel]]) ('tip', teks)
-# markup: **tebal**  `kode`
-CONTENT = [
+# markup: **tebal**  *miring*  `kode`  {O} = alamat server
+CONTENT_ID = [
     ("h", "1. Mulai dalam 3 langkah"),
     ("ol", [
         "Jalankan **AimTrail.exe**. Ikon muncul di system tray (dekat jam) dan panel terbuka di browser.",
@@ -29,9 +43,11 @@ CONTENT = [
     ("table", ["Overlay", "URL Browser Source", "Panel pengaturan"], [
         ["Ekor gerakan mouse", "{O}/overlay.html", "/panel.html"],
         ["Tombol keyboard + mouse", "{O}/keys.html", "/keys-panel.html"],
+        ["Metrik live", "{O}/metrics.html", "/metrics-panel.html"],
+        ["Controller (gamepad)", "{O}/pad.html", "/pad-panel.html"],
     ]),
     ("tip", "Tidak perlu mengetik URL: klik kanan ikon tray > **Salin URL overlay**. "
-            "Pakai dua Browser Source terpisah agar bebas diatur posisi dan ukurannya."),
+            "Pasang tiap overlay sebagai Browser Source terpisah agar bebas diatur posisi dan ukurannya."),
 
     ("h", "2. Ekor gerakan mouse"),
     ("ul", [
@@ -58,31 +74,54 @@ CONTENT = [
     ("tip", "Privasi: server hanya meneruskan tombol yang ada di layout-mu. Ketikan lain (password, chat, dll.) "
             "tidak pernah dikirim ke overlay dan tidak disimpan."),
 
-    ("h", "4. Menu ikon tray (klik kanan)"),
+    ("h", "4. Metrik live (kecepatan, CPS, tahan klik, stabilitas)"),
     ("ul", [
-        "**Buka panel** ekor mouse / keyboard + mouse (klik dua kali ikon = panel ekor mouse), dan **Buka panduan**.",
+        "Pasang `{O}/metrics.html` sebagai Browser Source dan atur di panel **Metrik**. Empat kartu menampilkan: **kecepatan mouse** (cm/dtk, isi DPI mouse-mu di panel), "
+        "**klik per detik (CPS)** beserta puncaknya, **durasi tahan klik** (sekarang, terakhir, rata-rata), dan **stabilitas bidikan**.",
+        "**Stabilitas** = seberapa lurus dan halus gerakan mouse saat menembak: 100% berarti halus, makin turun berarti makin bolak-balik atau goyang. Ini indikator kasar, bukan skor resmi.",
+        "Pilih susunan (baris / kolom / kotak), bar dan grafik mini, tombol yang dihitung, lalu **Reset sesi** untuk menghapus puncak dan hitungan klik.",
+    ]),
+
+    ("h", "5. Overlay controller (gamepad)"),
+    ("ul", [
+        "Pasang `{O}/pad.html`. Menampilkan tombol, **trigger analog**, dan **stik dengan jejak gerak** untuk controller Xbox atau yang kompatibel XInput.",
+        "Controller PlayStation atau Switch Pro bisa dipakai lewat Steam Input atau DS4Windows; pilih label **PlayStation** agar simbolnya sesuai.",
+        "Atur controller yang dipakai (1-4), zona mati stik, skala, dan posisi. AimTrail hanya **membaca** controller.",
+    ]),
+
+    ("h", "6. Tema bersama dan animasi"),
+    ("ul", [
+        "Halaman **Tema** mengatur warna, huruf, bentuk, dan **animasi masuk/keluar** untuk semua overlay sekaligus, dengan pratinjau yang menampilkan semuanya bersamaan.",
+        "Overlay **Metrik** dan **Controller** selalu memakai tema. Untuk **Ekor mouse** dan **Keyboard + mouse**, centang *Ikuti tema bersama* (di halaman Tema atau di pengaturannya).",
+        "Animasi: pilih gaya masuk (naik, turun, dari samping, zoom, memudar), gaya keluar, durasi, dan gerak (halus / memantul). Overlay muncul dengan animasi saat OBS menampilkannya dan saat ada aktivitas setelah sembunyi-otomatis.",
+    ]),
+
+    ("h", "7. Menu ikon tray (klik kanan)"),
+    ("ul", [
+        "**Buka panel** ekor mouse / keyboard + mouse (klik dua kali ikon = panel ekor mouse), **Panel lainnya** (metrik, controller, tema), dan **Buka panduan**.",
+        "**File OBS anti-putus** menyalin lokasi file lokal yang menjaga source OBS tetap tersambung.",
         "**Ekor mouse selalu aktif (tanpa klik)** untuk menyalakan/mematikan mode selalu aktif, dan **Salin URL overlay** untuk langsung ditempel ke OBS.",
         "**Jalan otomatis saat Windows menyala**, **Akses dari PC lain (LAN)**, **Pembaruan**, **Buka folder pengaturan**, **Tentang**, **Keluar**.",
         "**Pembaruan:** AimTrail memeriksa versi baru otomatis. Jika ada, muncul notifikasi dan spanduk di panel. Klik **Pasang** (overlay terputus beberapa detik lalu menyala sendiri).",
     ]),
 
-    ("h", "5. Dua PC (game di PC A, OBS di PC B)"),
+    ("h", "8. Dua PC (game di PC A, OBS di PC B)"),
     ("ol", [
         "Di PC A, aktifkan **Izinkan akses dari PC lain (LAN)** pada menu tray.",
         "Di OBS pada PC B, pakai URL `http://IP-PC-A:8765/overlay.html` (IP muncul di notifikasi tray).",
         "Izinkan port 8765 di firewall PC A. Gunakan hanya di jaringan yang kamu percaya.",
     ]),
 
-    ("h", "6. Tips agar ringan dan mulus"),
+    ("h", "9. Tips agar ringan dan mulus"),
     ("ul", [
         "Browser Source: centang **Use custom frame rate** dan isi **60** (default sebagian versi OBS hanya 30 FPS).",
         "OBS > Settings > Advanced: aktifkan **browser source hardware acceleration**, lalu restart OBS.",
         "Terasa berat? Panel > *Performa & kehalusan* > **Kualitas render = Ringan**, atau matikan Glow.",
         "Tambahkan `?debug=1` di akhir URL overlay untuk melihat FPS dan jumlah data per detik.",
-        "Memakai kedua overlay? Watermark otomatis hanya tampil di satu overlay.",
+        "Memakai beberapa overlay? Watermark otomatis hanya tampil di satu overlay.",
     ]),
 
-    ("h", "7. Pemecahan masalah"),
+    ("h", "10. Pemecahan masalah"),
     ("table", ["Gejala", "Solusi"], [
         ["Panel tertulis \"mode simulasi\"", "Raw Input gagal atau bukan Windows. Lihat `aimtrail.log` (tray > Buka folder pengaturan)."],
         ["Tidak bereaksi saat main", "Jika game berjalan sebagai Administrator, jalankan AimTrail sebagai Administrator juga."],
@@ -96,13 +135,15 @@ CONTENT = [
         ["SmartScreen / antivirus memberi peringatan", ".exe tidak bertanda tangan digital dan membaca input global. Kecualikan file AimTrail.exe; jangan mematikan antivirus."],
     ]),
 
-    ("h", "8. Catatan"),
+    ("h", "11. Catatan"),
     ("ul", [
-        "AimTrail hanya **membaca** input lewat Raw Input standar Windows (tanpa hook atau injeksi ke game). "
+        "AimTrail hanya **membaca** input lewat Raw Input dan XInput standar Windows (tanpa hook atau injeksi ke game). "
         "Kebijakan tiap anti-cheat berbeda; untuk game kompetitif, cek aturan resminya.",
-        "Pengaturan tersimpan di `%APPDATA%\\AimTrail` (config.json, keys.json, settings.json).",
+        "Pengaturan tersimpan di `%APPDATA%\\AimTrail` (config.json, keys.json, metrics.json, pad.json, theme.json, settings.json).",
     ]),
 ]
+
+CONTENTS["id"], CONTENTS["en"] = CONTENT_ID, CONTENT_EN
 
 
 # ---------------------------------------------------------------------------- HTML
@@ -114,9 +155,9 @@ def inline_html(t):
     return re.sub(r"\{O\}", '<span class="o">http://localhost:8765</span>', t)
 
 
-def build_html():
-    out = []
-    for blk in CONTENT:
+def build_html(lang):
+    L, out = LANG[lang], []
+    for blk in CONTENTS[lang]:
         k = blk[0]
         if k == "h":
             out.append(f"<h2>{inline_html(blk[1])}</h2>")
@@ -131,25 +172,28 @@ def build_html():
             rows = "".join("<tr>" + "".join(f"<td>{inline_html(c)}</td>" for c in r) + "</tr>" for r in blk[2])
             out.append(f'<div class="tw"><table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>')
     body = "\n".join(out)
+    here = L["html"]
+    nav = "".join(f'<a{" class=cur" if h.endswith(here) else ""} href="{h}">{escape(t)}</a>' for h, t in L["nav"])
     return f"""<!doctype html>
-<html lang="id">
+<html lang="{L['lang']}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{TITLE}</title>
+<title>{L['title']}</title>
 <style>
   :root {{ --bg:#0a1220; --panel:#0f1b2e; --line:#263243; --text:#dbe7f5; --muted:#8aa0b8; --accent:#38bdf8;
           --font:"Bahnschrift","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; --mono:"Cascadia Mono",Consolas,ui-monospace,monospace; }}
   * {{ box-sizing: border-box; }}
   html {{ color-scheme: dark; }}
   body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.6 var(--font); }}
-  header {{ display:flex; align-items:center; gap:14px; padding:14px 24px; border-bottom:1px solid var(--line); }}
+  header {{ display:flex; align-items:center; gap:14px; padding:14px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap; }}
   header h1 {{ margin:0; font-size:20px; font-weight:600; }}
-  nav {{ display:flex; gap:4px; margin-left:8px; }}
+  nav {{ display:flex; gap:4px; margin-left:8px; flex-wrap:wrap; }}
   nav a {{ color:var(--muted); text-decoration:none; padding:6px 12px; border-radius:6px; border:1px solid transparent; }}
   nav a:hover {{ color:var(--text); }}
   nav a.cur {{ color:var(--accent); border-color:var(--line); background:var(--panel); }}
-  .dl {{ margin-left:auto; color:var(--accent); text-decoration:none; border:1px solid var(--line); padding:6px 12px; border-radius:6px; }}
+  .right {{ margin-left:auto; display:flex; gap:8px; }}
+  .right a {{ color:var(--accent); text-decoration:none; border:1px solid var(--line); padding:6px 12px; border-radius:6px; }}
   main {{ max-width: 860px; margin: 0 auto; padding: 28px 24px 8px; }}
   .hero {{ margin-bottom: 8px; }}
   .hero h2 {{ font-size: 30px; margin: 0 0 6px; border: 0; padding: 0; color: var(--text); }}
@@ -168,7 +212,7 @@ def build_html():
   @media print {{
     html {{ color-scheme: light; }}
     body {{ background:#fff; color:#111; font-size:12px; }}
-    header nav, .dl {{ display:none; }} header {{ border-color:#ccc; }}
+    header nav, .right {{ display:none; }} header {{ border-color:#ccc; }}
     h2 {{ color:#075985; border-color:#ccc; }} th {{ background:#f1f5f9; color:#075985; }} th, td {{ border-color:#ccc; }}
     code, .tip {{ background:#f8fafc; border-color:#ddd; }} footer {{ color:#555; }} footer a {{ color:#075985; }}
   }}
@@ -177,11 +221,11 @@ def build_html():
 <body>
 <header>
   <h1>AimTrail</h1>
-  <nav><a href="/panel.html">Ekor mouse</a><a href="/keys-panel.html">Keyboard &amp; mouse</a><a class="cur" href="/manual.html">Panduan</a></nav>
-  <a class="dl" href="/Panduan-AimTrail.pdf" download>Unduh PDF</a>
+  <nav>{nav}</nav>
+  <span class="right"><a href="{L['other'][0]}">{escape(L['other'][1])}</a><a href="/{L['pdf']}" download>{L['dl']}</a></span>
 </header>
 <main>
-  <div class="hero"><h2>Panduan Singkat</h2><p>{escape(SUB)}. Versi {VERSION}.</p></div>
+  <div class="hero"><h2>{L['hero']}</h2><p>{escape(L['sub'])}. {L['version']} {VERSION}.</p></div>
 {body}
 </main>
 <footer>Created by <b>Andromache</b> · TikTok <a href="{TIKTOK}" target="_blank" rel="noopener">@andromache.4k</a> · v{VERSION}</footer>
@@ -195,15 +239,15 @@ def build_html():
 
 
 # ----------------------------------------------------------------------------- PDF
-def build_pdf(path):
+def build_pdf(lang, path):
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_LEFT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.platypus import (Image, KeepTogether, ListFlowable, ListItem, Paragraph, SimpleDocTemplate,
-                                    Spacer, Table, TableStyle)
+    from reportlab.platypus import (KeepTogether, ListFlowable, ListItem, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle)
 
+    L = LANG[lang]
     NAVY, SKY, INK, MUTED, LINE = colors.HexColor("#0b1220"), colors.HexColor("#0ea5e9"), colors.HexColor("#14202f"), \
         colors.HexColor("#5b6b7f"), colors.HexColor("#cbd5e1")
     body = ParagraphStyle("body", fontName="Helvetica", fontSize=9.6, leading=13.6, textColor=INK, alignment=TA_LEFT)
@@ -243,8 +287,8 @@ def build_pdf(path):
                                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")])]))
         return [Spacer(1, 4), t, Spacer(1, 2)]
 
-    story, pending = [], None   # judul digabung dengan blok pertamanya agar tidak sendirian di dasar halaman
-    for blk in CONTENT:
+    story, pending = [], None
+    for blk in CONTENTS[lang]:
         if blk[0] == "h":
             pending = Paragraph(md(blk[1]), h2)
             continue
@@ -262,10 +306,10 @@ def build_pdf(path):
         icon = ROOT / "icon.png"
         if icon.exists():
             c.drawImage(str(icon), 16 * mm, H - 32 * mm, 24 * mm, 24 * mm, mask="auto")
-        c.setFillColor(colors.white); c.setFont("Helvetica-Bold", 22); c.drawString(46 * mm, H - 19 * mm, "AimTrail - Panduan Singkat")
-        c.setFillColor(colors.HexColor("#7dd3fc")); c.setFont("Helvetica", 9.4)
-        c.drawString(46 * mm, H - 26 * mm, "Ekor gerakan mouse + tampilan tombol keyboard & mouse untuk live stream")
-        c.setFillColor(colors.HexColor("#8aa0b8")); c.setFont("Helvetica", 8.5); c.drawString(46 * mm, H - 32 * mm, f"Versi {VERSION}")
+        c.setFillColor(colors.white); c.setFont("Helvetica-Bold", 22); c.drawString(46 * mm, H - 19 * mm, L["title"])
+        c.setFillColor(colors.HexColor("#7dd3fc")); c.setFont("Helvetica", 8.6)
+        c.drawString(46 * mm, H - 26 * mm, L["sub"].split(" (")[0][:96])
+        c.setFillColor(colors.HexColor("#8aa0b8")); c.setFont("Helvetica", 8.5); c.drawString(46 * mm, H - 32 * mm, f"{L['version']} {VERSION}")
         c.restoreState(); footer(c, d)
 
     def footer(c, d):
@@ -274,17 +318,17 @@ def build_pdf(path):
         c.setStrokeColor(LINE); c.setLineWidth(0.5); c.line(18 * mm, 16 * mm, W - 18 * mm, 16 * mm)
         c.setFont("Helvetica", 8); c.setFillColor(MUTED)
         c.drawString(18 * mm, 11.5 * mm, CREDIT)
-        c.drawRightString(W - 18 * mm, 11.5 * mm, f"Halaman {d.page}")
+        c.drawRightString(W - 18 * mm, 11.5 * mm, f"{L['page']} {d.page}")
         c.restoreState()
 
     doc = SimpleDocTemplate(str(path), pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm,
-                            bottomMargin=22 * mm, title=TITLE, author="Andromache", subject="Panduan penggunaan AimTrail",
-                            creator=CREDIT)
-    story.insert(0, Spacer(1, 26 * mm))   # ruang untuk header halaman pertama
+                            bottomMargin=22 * mm, title=L["title"], author="Andromache", subject="AimTrail", creator=CREDIT)
+    story.insert(0, Spacer(1, 26 * mm))
     doc.build(story, onFirstPage=first_page, onLaterPages=footer)
 
 
 if __name__ == "__main__":
-    (ROOT / "web" / "manual.html").write_text(build_html(), encoding="utf-8")
-    build_pdf(ROOT / "web" / "Panduan-AimTrail.pdf")
-    print("manual.html & Panduan-AimTrail.pdf dibuat")
+    for lg in ("id", "en"):
+        (ROOT / "web" / LANG[lg]["html"]).write_text(build_html(lg), encoding="utf-8")
+        build_pdf(lg, ROOT / "web" / LANG[lg]["pdf"])
+    print("manual.html, Panduan-AimTrail.pdf, manual.en.html, AimTrail-Guide.pdf dibuat")

@@ -1,6 +1,6 @@
 # AimTrail — overlay jejak mouse + tombol keyboard/mouse untuk live stream
 
-> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.4.3
+> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.5.0
 
 **Baru membuka? Baca panduan singkatnya:** `web/Panduan-AimTrail.pdf`, atau di aplikasi: menu tray → *Buka panduan* (`http://localhost:8765/manual.html`).
 
@@ -28,7 +28,7 @@ Tidak perlu memasang Python. Cukup jalankan **`AimTrail.exe`**: ikon muncul di s
 2. **GitHub Actions:** unggah proyek ini ke repositori GitHub, lalu jalankan workflow *Build AimTrail.exe*
    (tab Actions) atau buat tag `v1.4.0`; file `.exe` jadi artifact / lampiran Release otomatis
 3. **Installer (opsional):** setelah `build.bat`, buka `installer.iss` dengan [Inno Setup](https://jrsoftware.org/isinfo.php)
-   → Compile → `AimTrail-Setup-1.4.3.exe` (ada pilihan ikon desktop dan jalan otomatis)
+   → Compile → `AimTrail-Setup-1.5.0.exe` (ada pilihan ikon desktop dan jalan otomatis)
 
 **Penyimpanan:** versi `.exe` menyimpan pengaturan di `%APPDATA%\AimTrail` (`config.json`, `keys.json`,
 `settings.json`, `aimtrail.log`), jadi tetap aman saat `.exe` diganti dengan versi baru. Untuk memindahkan
@@ -74,14 +74,33 @@ Kedua overlay menampilkan watermark kecil **"Created by Andromache | TikTok @and
 *Watermark* pada panel. Jika dua overlay dipakai bersamaan, watermark otomatis hanya tampil di satu overlay (tidak ganda).
 Kredit juga ada di panel, menu Tentang, properti `.exe`, installer, dan manual.
 
-## Dua overlay
+## Empat overlay
 
 | Overlay | URL Browser Source | Panel pengaturan |
 |---|---|---|
 | Ekor gerakan mouse | `http://localhost:8765/overlay.html` | `/panel.html` |
 | Tombol keyboard + mouse | `http://localhost:8765/keys.html` | `/keys-panel.html` |
+| Metrik live | `http://localhost:8765/metrics.html` | `/metrics-panel.html` |
+| Controller (gamepad) | `http://localhost:8765/pad.html` | `/pad-panel.html` |
 
-Keduanya Browser Source terpisah, jadi bebas diletakkan dan diubah ukurannya sendiri-sendiri.
+Masing-masing Browser Source terpisah, jadi bebas diletakkan dan diubah ukurannya sendiri-sendiri. Halaman **Tema** (`/tema.html`)
+mengatur warna, huruf, bentuk, dan animasi untuk semuanya sekaligus.
+
+## Demo
+
+| Ekor mouse (titik terkunci di tengah) | Keyboard + mouse |
+|---|---|
+| ![Ekor mouse](docs/demo-trail.gif) | ![Keyboard dan mouse](docs/demo-keys.gif) |
+
+| Metrik live | Controller |
+|---|---|
+| ![Metrik](docs/demo-metrics.gif) | ![Controller](docs/demo-pad.gif) |
+
+| Satu tema untuk semua overlay | Animasi masuk dan keluar |
+|---|---|
+| ![Tema](docs/demo-theme.gif) | ![Animasi](docs/demo-animasi.gif) |
+
+Panduan singkat: [Bahasa Indonesia](web/Panduan-AimTrail.pdf) · [English](web/AimTrail-Guide.pdf) · English README: [README.en.md](README.en.md)
 
 ## Cara kerja
 
@@ -150,6 +169,28 @@ pengaturan, jadi pakai hanya di jaringan yang kamu percaya.
 
 Panel punya area preview: tahan klik kiri dan gerakkan mouse di sana untuk mencoba,
 atau tekan **Putar demo**.
+
+## Metrik live
+
+Empat kartu: **kecepatan mouse** (cm/dtk dengan DPI-mu atau hitungan mentah, plus grafik mini 5 detik), **klik per detik (CPS)** dengan puncak dan total,
+**durasi tahan klik** (sekarang, terakhir, rata-rata 10 terakhir), dan **stabilitas bidikan**: seberapa lurus dan halus gerakan mouse
+(jarak bersih dibagi panjang lintasan per jendela 1 detik, dihitung per kotak waktu 40 ms). 100% = halus; makin rendah = makin bolak-balik.
+Ini indikator kasar, bukan skor resmi. Bisa dihitung hanya saat menahan klik (menembak) atau selalu. Susunan baris/kolom/kotak, bar, grafik,
+tombol yang dihitung, sembunyi otomatis, dan tombol **Reset sesi** ada di panel Metrik.
+
+## Controller (gamepad)
+
+Membaca controller Xbox / kompatibel **XInput** langsung di server (tombol, trigger analog, dua stik, hingga 4 controller) dan menampilkannya sebagai
+overlay: stik bergerak dengan jejak, trigger terisi sesuai tekanan, tombol menyala. Label Xbox / PlayStation / Nintendo, zona mati stik, warna
+tombol A B X Y (warna Xbox atau ikut tema). Controller PlayStation / Switch Pro bisa lewat Steam Input atau DS4Windows. Hanya membaca, tidak mengirim
+apa pun ke game.
+
+## Tema bersama dan animasi
+
+Halaman **Tema** mengatur satu tema untuk semua overlay: warna (aksen, gradasi, teks, latar kartu, garis tepi, glow), huruf, sudut membulat, serta
+**animasi masuk/keluar** (naik, turun, dari samping, zoom, memudar; durasi; gaya gerak halus/memantul). Overlay **Metrik** dan **Controller** selalu
+memakai tema; **Ekor mouse** dan **Keyboard + mouse** memakainya bila *Ikuti tema bersama* dicentang (tidak mengubah gaya lama kecuali kamu memilihnya).
+8 preset tema, ekspor/impor JSON. Animasi dimainkan saat overlay muncul pertama kali, dan saat aktivitas kembali setelah sembunyi-otomatis.
 
 ## Overlay keyboard & mouse
 
@@ -227,8 +268,15 @@ web/keys-panel.html panel keyboard & mouse + editor layout
 web/keys.js        mesin tampilan tombol
 web/panel.css      gaya panel
 web/wm.js         watermark
-web/manual.html     panduan di dalam aplikasi
-web/Panduan-AimTrail.pdf  panduan PDF untuk dibagikan
+web/theme.js, anim.js  tema bersama + animasi masuk/keluar
+web/metrics.js, metrics.html, metrics-panel.html  metrik live
+web/pad.js, pad.html, pad-panel.html  controller (gamepad)
+web/tema.html       halaman Tema & animasi
+web/nav.js          navigasi bersama panel
+docs/*.gif          GIF demo (README)
+README.en.md        README bahasa Inggris
+web/manual.html, manual.en.html  panduan di dalam aplikasi (Indonesia / English)
+web/Panduan-AimTrail.pdf, AimTrail-Guide.pdf  panduan PDF untuk dibagikan
 tools/build_manual.py  pembuat manual (butuh `pip install reportlab`)
 config.json        pengaturan ekor (dibuat otomatis)
 keys.json          pengaturan keyboard & mouse (dibuat otomatis)

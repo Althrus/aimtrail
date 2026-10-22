@@ -27,32 +27,36 @@ from aiohttp import web, WSMsgType
 
 import updater
 
-VERSION = "1.4.3"
+VERSION = "1.5.0"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 BASE = Path(__file__).resolve().parent
 # file web: di dalam paket PyInstaller (_MEIPASS) bila dibekukan, selain itu di samping server.py
 WEB = Path(getattr(sys, "_MEIPASS", BASE)) / "web"
 DATA = BASE            # lokasi config.json / keys.json (diubah lewat configure())
-CONFIG = DATA / "config.json"
-KCONFIG = DATA / "keys.json"
 IS_WIN = sys.platform == "win32"
 
 
 def configure(data_dir=None):
     """Tentukan folder penyimpanan pengaturan (mis. %APPDATA%\\AimTrail untuk versi .exe)."""
-    global DATA, CONFIG, KCONFIG
+    global DATA
     if data_dir:
         DATA = Path(data_dir)
         DATA.mkdir(parents=True, exist_ok=True)
-    CONFIG, KCONFIG = DATA / "config.json", DATA / "keys.json"
+
+
+def cfg_path(name):
+    return DATA / CFG_FILES[name]
+
 
 # Hanya tombol yang ditampilkan di overlay yang diteruskan (bukan keylogger). Default = 21 tombol FPS.
 DEFAULT_WATCH = {0x31, 0x32, 0x33, 0x34, 0x51, 0x57, 0x41, 0x53, 0x44, 0x45, 0x43, 0x5A,
                  0x10, 0x09, 0x52, 0x46, 0x56, 0x47, 0x11, 0x12, 0x20}
-SUBS = {"keys": {"k", "b", "w"}, "trail": {"m", "b"}}  # jenis event yang dikirim per halaman
+SUBS = {"keys": {"k", "b", "w"}, "trail": {"m", "b"}, "metrics": {"m", "b"}, "pad": {"p", "pc"}, "cfg": set()}
+# jenis event yang dikirim per halaman ("cfg": hanya pengaturan)
+# Semua kelompok pengaturan yang disimpan server dan disiarkan ke seluruh klien
+CFG_FILES = {"config": "config.json", "kconfig": "keys.json", "mconfig": "metrics.json", "pconfig": "pad.json", "tconfig": "theme.json"}
 
 
-# --------------------------------------------------------------------------- hub
 class Hub:
     """Penampung input dari thread Raw Input -> dikuras oleh loop asyncio."""
 
@@ -67,6 +71,7 @@ class Hub:
         self.watch = set(DEFAULT_WATCH)  # VK yang boleh diteruskan
         self._idle = False
         self._wake = None
+        self.pads = {}                  # slot -> status terakhir controller (XInput)
 
     # --- mode hemat: loop pengirim tidur saat tak ada input, dibangunkan oleh input pertama
     def set_wake(self, cb):
@@ -126,6 +131,19 @@ class Hub:
     def wheel(self, v):
         with self.lock:
             self.events.append({"t": "w", "v": v})
+            self._poke()
+
+    def pad(self, slot, st):
+        with self.lock:
+            self.pads[slot] = st
+            self.events.append({"t": "p", "i": slot, **st})
+            self._poke()
+
+    def pad_conn(self, slot, on):
+        with self.lock:
+            if not on:
+                self.pads.pop(slot, None)
+            self.events.append({"t": "pc", "i": slot, "on": 1 if on else 0})
             self._poke()
 
     def set_watch(self, vks):
@@ -278,6 +296,75 @@ class RawMouse(threading.Thread):
             user32.DispatchMessageW(ctypes.byref(msg))
 
 
+# ------------------------------------------------------------- controller (XInput)
+class XInputPoll(threading.Thread):
+    """Baca controller Xbox / kompatibel XInput (tanpa pustaka tambahan). Hanya membaca, tidak mengirim apa pun ke game."""
+
+    def __init__(self, hub):
+        super().__init__(daemon=True, name="xinput")
+        self.hub = hub
+
+    def run(self):
+        import ctypes
+        dll = None
+        for name in ("xinput1_4", "xinput1_3", "xinput9_1_0"):
+            try:
+                dll = ctypes.WinDLL(name)
+                break
+            except OSError:
+                continue
+        if dll is None:
+            return
+
+        class GAMEPAD(ctypes.Structure):
+            _fields_ = [("wButtons", ctypes.c_ushort), ("bLeftTrigger", ctypes.c_ubyte), ("bRightTrigger", ctypes.c_ubyte),
+                        ("sThumbLX", ctypes.c_short), ("sThumbLY", ctypes.c_short),
+                        ("sThumbRX", ctypes.c_short), ("sThumbRY", ctypes.c_short)]
+
+        class STATE(ctypes.Structure):
+            _fields_ = [("dwPacketNumber", ctypes.c_uint32), ("Gamepad", GAMEPAD)]
+
+        dll.XInputGetState.argtypes = [ctypes.c_uint32, ctypes.POINTER(STATE)]
+        dll.XInputGetState.restype = ctypes.c_uint32
+        hub = self.hub
+        connected, packet, last, next_scan = [False] * 4, [-1] * 4, [None] * 4, [0.0] * 4
+        while True:
+            now = time.perf_counter()
+            for i in range(4):
+                if not connected[i] and now < next_scan[i]:
+                    continue                       # slot kosong dicek jarang (memeriksanya sering bisa lambat)
+                st = STATE()
+                if dll.XInputGetState(i, ctypes.byref(st)) == 0:
+                    if not connected[i]:
+                        connected[i] = True
+                        hub.pad_conn(i, True)
+                    if st.dwPacketNumber != packet[i]:
+                        packet[i] = st.dwPacketNumber
+                        g = st.Gamepad
+                        cur = (g.wButtons, g.bLeftTrigger, g.bRightTrigger, g.sThumbLX, g.sThumbLY, g.sThumbRX, g.sThumbRY)
+                        old = last[i]
+                        if (old is None or old[:3] != cur[:3] or any(abs(a - b) >= 512 for a, b in zip(old[3:], cur[3:]))):
+                            last[i] = cur
+                            hub.pad(i, {"b": cur[0], "lt": cur[1], "rt": cur[2], "lx": cur[3], "ly": cur[4], "rx": cur[5], "ry": cur[6]})
+                else:
+                    if connected[i]:
+                        connected[i] = False
+                        packet[i], last[i] = -1, None
+                        hub.pad_conn(i, False)
+                    next_scan[i] = now + 1.5
+            time.sleep(1 / 120)
+
+
+_XI = None
+
+
+def start_pad():
+    global _XI
+    if IS_WIN and _XI is None:
+        _XI = XInputPoll(HUB)
+        _XI.start()
+
+
 # ----------------------------------------------------------------------- simulasi
 async def simulate(hub):
     """Mode demo (tanpa mouse asli): menekan klik kiri & menggerakkan mouse secara acak."""
@@ -294,6 +381,22 @@ async def simulate(hub):
             hub.move(round(vx * 0.15), round(vy * 0.15))
             await asyncio.sleep(0.004)
         hub.set_mask(0)
+
+
+async def simulate_pad(hub):
+    """Demo controller tanpa controller asli: tombol acak + analog bergerak."""
+    hub.pad_conn(0, True)
+    t0, btn, until = time.perf_counter(), 0, 0.0
+    bits = [0x1000, 0x2000, 0x4000, 0x8000, 0x0100, 0x0200, 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080]
+    while True:
+        await asyncio.sleep(0.033)
+        t = time.perf_counter() - t0
+        if t > until:
+            btn = random.choice(bits) if random.random() < 0.6 else 0
+            until = t + random.uniform(0.15, 0.6)
+        hub.pad(0, {"b": btn, "lt": int(max(0, math.sin(t * 1.3)) * 255), "rt": int(max(0, math.sin(t * 0.9 + 1)) * 255),
+                    "lx": int(math.cos(t * 1.7) * 24000), "ly": int(math.sin(t * 1.1) * 18000),
+                    "rx": int(math.cos(t * 0.8) * 26000), "ry": int(math.sin(t * 1.9) * 12000)})
 
 
 async def simulate_keys(hub):
@@ -356,7 +459,7 @@ async def broadcast(app, text, skip=None):
 
 def peers(app):
     """Jumlah overlay (Browser Source) yang terhubung, per jenis. Dipakai agar watermark tidak ganda."""
-    n = {"trail": 0, "keys": 0}
+    n = {"trail": 0, "keys": 0, "metrics": 0, "pad": 0}
     for sub, role in app["clients"].values():
         if role == "overlay" and sub in n:
             n[sub] += 1
@@ -387,10 +490,9 @@ async def ws_handler(request):
     await ws.prepare(request)
     app["clients"][ws] = (request.query.get("sub", "all"), request.query.get("role", ""))
     with hub.lock:
-        keys, mask = sorted(hub.keys), hub.mask
-    await ws.send_str(json.dumps({"t": "hello", "config": app["config"], "kconfig": app["kconfig"],
-                                  "src": app["src"], "build": build_id(), "keys": keys, "mask": mask,
-                                  "peers": peers(app)}))
+        keys, mask, pads = sorted(hub.keys), hub.mask, {str(k): v for k, v in hub.pads.items()}
+    await ws.send_str(json.dumps({"t": "hello", **app["cfgs"], "src": app["src"], "build": build_id(), "keys": keys,
+                                  "mask": mask, "pads": pads, "peers": peers(app)}))
     await announce_peers(app)
     try:
         async for msg in ws:
@@ -403,18 +505,16 @@ async def ws_handler(request):
             if not isinstance(data, dict) or not isinstance(data.get("config"), dict):
                 continue
             kind, cfg = data.get("t"), data["config"]
+            if kind not in CFG_FILES:
+                continue
+            app["cfgs"][kind] = cfg
+            if kind == "kconfig":
+                hub.set_watch(watch_from(cfg))
             try:
-                if kind == "config":
-                    app["config"] = cfg
-                    _save(CONFIG, cfg)
-                    await broadcast(app, json.dumps({"t": "config", "config": cfg}), skip=ws)
-                elif kind == "kconfig":
-                    app["kconfig"] = cfg
-                    hub.set_watch(watch_from(cfg))
-                    _save(KCONFIG, cfg)
-                    await broadcast(app, json.dumps({"t": "kconfig", "config": cfg}), skip=ws)
+                _save(cfg_path(kind), cfg)
             except OSError as e:
                 print("Gagal menyimpan pengaturan:", e)
+            await broadcast(app, json.dumps({"t": kind, "config": cfg}), skip=ws)
     finally:
         app["clients"].pop(ws, None)
         await announce_peers(app)
@@ -469,6 +569,7 @@ async def background(app):
     if app["src"] == "simulate":
         tasks.append(asyncio.create_task(simulate(app["hub"])))
         tasks.append(asyncio.create_task(simulate_keys(app["hub"])))
+        tasks.append(asyncio.create_task(simulate_pad(app["hub"])))
     yield
     for t in tasks:
         t.cancel()
@@ -504,7 +605,9 @@ iframe{position:absolute;left:0;top:0;width:100%;height:100%;border:0;background
 </script></body></html>
 """
 LOADERS = [("AimTrail-Ekor-Mouse.html", "overlay.html", "Ekor Mouse"),
-           ("AimTrail-Keyboard-Mouse.html", "keys.html", "Keyboard dan Mouse")]
+           ("AimTrail-Keyboard-Mouse.html", "keys.html", "Keyboard dan Mouse"),
+           ("AimTrail-Metrik.html", "metrics.html", "Metrik"),
+           ("AimTrail-Controller.html", "pad.html", "Controller")]
 
 
 def obs_dir():
@@ -562,25 +665,26 @@ def start_input(simulate=False):
             print("! Gagal memulai Raw Input:", raw.error, "-> memakai mode simulasi.")
             return "simulate"
         _RAW = raw
+    start_pad()
     return "rawinput"
 
 
-async def patch_config(app, patch):
-    cfg = dict(app["config"])
+async def patch_config(app, patch, name="config"):
+    cfg = dict(app["cfgs"][name])
     cfg.update(patch)
-    app["config"] = cfg
+    app["cfgs"][name] = cfg
     try:
-        _save(CONFIG, cfg)
+        _save(cfg_path(name), cfg)
     except OSError as e:
         print("Gagal menyimpan pengaturan:", e)
-    await broadcast(app, json.dumps({"t": "config", "config": cfg}))
+    await broadcast(app, json.dumps({"t": name, "config": cfg}))
     return cfg
 
 
 async def api_always(request):
     """/api/always?on=1|0|toggle -> nyalakan/matikan ekor mouse selalu aktif (mis. untuk Stream Deck)."""
     app = request.app
-    cur = bool(app["config"].get("alwaysOn"))
+    cur = bool(app["cfgs"]["config"].get("alwaysOn"))
     q = request.query.get("on", "toggle").lower()
     new = (not cur) if q == "toggle" else q in ("1", "true", "on", "yes")
     if new != cur:
@@ -594,7 +698,8 @@ async def status(request):
                               "clients": len(app["clients"]), "rate": app["rate"], "build": build_id(),
                               "update": updater.public_state(),
                               "obs": {"dir": str(obs_dir()), "trail": str(obs_dir() / LOADERS[0][0]),
-                                      "keys": str(obs_dir() / LOADERS[1][0])}})
+                                      "keys": str(obs_dir() / LOADERS[1][0]),
+                                      "metrics": str(obs_dir() / LOADERS[2][0]), "pad": str(obs_dir() / LOADERS[3][0])}})
 
 
 def same_origin(request):
@@ -616,8 +721,8 @@ async def api_update_install(request):
 def make_app(src, rate):
     app = web.Application(middlewares=[no_cache])
     app["hub"], app["src"], app["rate"] = HUB, src, max(30, min(rate, 1000))
-    app["config"], app["kconfig"], app["clients"] = _load(CONFIG), _load(KCONFIG), {}
-    HUB.set_watch(watch_from(app["kconfig"]))
+    app["cfgs"], app["clients"] = {n: _load(cfg_path(n)) for n in CFG_FILES}, {}
+    HUB.set_watch(watch_from(app["cfgs"]["kconfig"]))
     app.cleanup_ctx.append(background)
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/api/status", status)
@@ -675,8 +780,8 @@ class Server:
         await web.TCPSite(self._runner, self.host, self.port).start()
 
     # --- dipakai aplikasi tray (thread lain): baca / ubah pengaturan ekor mouse dan siarkan ke semua overlay
-    def get_config(self):
-        return dict(self.app["config"]) if self.app else {}
+    def get_config(self, name="config"):
+        return dict(self.app["cfgs"][name]) if self.app else {}
 
     def update_config(self, patch, timeout=3):
         fut = asyncio.run_coroutine_threadsafe(patch_config(self.app, patch), self.loop)

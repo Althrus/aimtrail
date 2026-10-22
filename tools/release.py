@@ -35,6 +35,7 @@ def main():
     sub("version_info.txt", r"'ProductVersion', '[^']+'", f"'ProductVersion', '{v}.0'")
     sub("installer.iss", r'#define AppVersion "[^"]+"', f'#define AppVersion "{v}"')
     sub("README.md", r"(@andromache\.4k\)) · v\d+\.\d+\.\d+", rf"\1 · v{v}")
+    sub("README.en.md", r"(@andromache\.4k\)) · v\d+\.\d+\.\d+", rf"\1 · v{v}")
     sub("README.md", r"AimTrail-Setup-\d+\.\d+\.\d+\.exe", f"AimTrail-Setup-{v}.exe")
     try:
         subprocess.run([sys.executable, str(ROOT / "tools" / "build_manual.py")], check=True)

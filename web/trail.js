@@ -7,6 +7,7 @@ const TRIGGERS = { left: 1, right: 2, middle: 4, x1: 8, x2: 16 };
 /* ------------------------------------------------------------------ pengaturan */
 const DEFAULTS = {
   // pemicu
+  useTheme: false,   // ikuti tema bersama (warna dari halaman Tema)
   alwaysOn: false,   // ekor selalu aktif mengikuti gerakan mouse, tanpa tombol pemicu
   trigger: 'left', triggerMode: 'hold',
   // gerakan
@@ -39,7 +40,7 @@ const DEFAULTS = {
 
 const QUALITY = { high: { gs: 1, blur: 1, seg: 48 }, balanced: { gs: 0.5, blur: 0.5, seg: 32 }, low: { gs: 0.35, blur: 0, seg: 20 } };
 
-const BEHAVIOR = new Set(['alwaysOn', 'trigger', 'triggerMode', 'sensitivity', 'invertX', 'invertY', 'boundary',
+const BEHAVIOR = new Set(['useTheme', 'alwaysOn', 'trigger', 'triggerMode', 'sensitivity', 'invertX', 'invertY', 'boundary',
   'followMargin', 'followSmooth', 'originOnPress', 'originX', 'originY',
   'bg', 'bgColor', 'bgOpacity', 'gridSize', 'gridColor',
   'border', 'borderColor', 'borderWidth', 'borderOpacity', 'borderStyle', 'borderRadius', 'borderInset', 'borderGlow',
@@ -98,6 +99,7 @@ const SCHEMA = [
     { k: 'maxPoints', l: 'Batas titik per tembakan', t: 'range', min: 200, max: 6000, step: 100, u: '' }
   ] },
   { g: 'Warna', items: [
+    { k: 'useTheme', l: 'Ikuti tema bersama (abaikan warna di bawah)', t: 'check' },
     { k: 'colorMode', l: 'Mode warna', t: 'select', o: { gradient: 'Gradasi (baru → lama)', solid: 'Satu warna',
       rainbow: 'Pelangi berputar', speed: 'Berdasarkan kecepatan (lambat → cepat)' } },
     { k: 'colorHead', l: 'Warna ujung baru / cepat', t: 'color' },
@@ -234,13 +236,17 @@ class AimTrail {
     this.mask = 0; this.lastDown = false; this.toggled = false;
     this.hx = 0; this.hy = 0; this.cam = { x: 0, y: 0 }; this.vel = 0;
     this.init = false; this.last = 0; this.idle = false;
-    this.always = false; this.lastMove = 0;
+    this.always = false; this.lastMove = 0; this.theme = null; this.rawCfg = null;
     this.q = QUALITY.high; this.fps = 0; this._fc = 0; this._ft = 0;
   }
 
+  setTheme(t) { this.theme = t; if (this.rawCfg) this.setConfig(this.rawCfg); }
+
   setConfig(c) {
+    this.rawCfg = c;
     const old = this.cfg;
     const n = Object.assign({}, DEFAULTS, c);
+    if (n.useTheme && this.theme && root.AimTheme) Object.assign(n, root.AimTheme.trailOverrides(this.theme));
     n.followMargin = clamp(n.followMargin, 0.02, 0.49);
     n.life = Math.max(50, n.life);
     this.cfg = n;

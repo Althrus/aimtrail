@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AimTrail - Quick Guide</title>
+<style>
+  :root { --bg:#0a1220; --panel:#0f1b2e; --line:#263243; --text:#dbe7f5; --muted:#8aa0b8; --accent:#38bdf8;
+          --font:"Bahnschrift","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; --mono:"Cascadia Mono",Consolas,ui-monospace,monospace; }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 var(--font); }
+  header { display:flex; align-items:center; gap:14px; padding:14px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; font-weight:600; }
+  nav { display:flex; gap:4px; margin-left:8px; flex-wrap:wrap; }
+  nav a { color:var(--muted); text-decoration:none; padding:6px 12px; border-radius:6px; border:1px solid transparent; }
+  nav a:hover { color:var(--text); }
+  nav a.cur { color:var(--accent); border-color:var(--line); background:var(--panel); }
+  .right { margin-left:auto; display:flex; gap:8px; }
+  .right a { color:var(--accent); text-decoration:none; border:1px solid var(--line); padding:6px 12px; border-radius:6px; }
+  main { max-width: 860px; margin: 0 auto; padding: 28px 24px 8px; }
+  .hero { margin-bottom: 8px; }
+  .hero h2 { font-size: 30px; margin: 0 0 6px; border: 0; padding: 0; color: var(--text); }
+  .hero p { margin: 0; color: var(--muted); }
+  h2 { font-size: 19px; margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); color: var(--accent); }
+  ol, ul { padding-left: 22px; margin: 8px 0; } li { margin: 5px 0; }
+  code { font: 13px var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+  .o { font-family: var(--mono); }
+  .tw { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 12px; border: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--panel); color: var(--accent); font-weight: 600; }
+  .tip { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px 14px; margin: 12px 0; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 28px 24px 32px; }
+  footer a { color: var(--accent); text-decoration: none; } footer b { color: var(--text); }
+  @media print {
+    html { color-scheme: light; }
+    body { background:#fff; color:#111; font-size:12px; }
+    header nav, .right { display:none; } header { border-color:#ccc; }
+    h2 { color:#075985; border-color:#ccc; } th { background:#f1f5f9; color:#075985; } th, td { border-color:#ccc; }
+    code, .tip { background:#f8fafc; border-color:#ddd; } footer { color:#555; } footer a { color:#075985; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>AimTrail</h1>
+  <nav><a href="/panel.html">Mouse trail</a><a href="/keys-panel.html">Keyboard &amp; mouse</a><a href="/metrics-panel.html">Metrics</a><a href="/pad-panel.html">Controller</a><a href="/tema.html">Theme</a><a class=cur href="/manual.en.html">Guide</a></nav>
+  <span class="right"><a href="/manual.html">Bahasa Indonesia</a><a href="/AimTrail-Guide.pdf" download>Download PDF</a></span>
+</header>
+<main>
+  <div class="hero"><h2>Quick Guide</h2><p>Mouse trail, keyboard &amp; mouse display, live metrics and controller overlays for live streaming (OBS and other software). Version 1.5.0.</p></div>
+<p class="tip">The panel interface is currently in Indonesian. This guide gives each setting name in English and, where helpful, the Indonesian label shown in the panel.</p>
+<h2>1. Get started in 3 steps</h2>
+<ol><li>Run <strong>AimTrail.exe</strong>. An icon appears in the system tray (near the clock) and the control panel opens in your browser.</li><li>In OBS: <strong>Sources &gt; + &gt; Browser</strong>. Set Width/Height to your OBS canvas (e.g. 1920 x 1080) and FPS to <strong>60</strong>. <strong>Recommended:</strong> tick <strong>Local file</strong> and pick the file shown on the <em>Anti-putus</em> (anti-disconnect) card in the panel, or use tray &gt; <em>File OBS anti-putus</em>. The source then stays connected even if OBS starts before AimTrail. Alternative: paste a URL from the table below.</li><li>Adjust the look in the panel. Changes show up in OBS instantly, no refresh needed.</li></ol>
+<div class="tw"><table><thead><tr><th>Overlay</th><th>Browser Source URL</th><th>Settings panel</th></tr></thead><tbody><tr><td>Mouse trail</td><td><span class="o">http://localhost:8765</span>/overlay.html</td><td>/panel.html</td></tr><tr><td>Keyboard + mouse</td><td><span class="o">http://localhost:8765</span>/keys.html</td><td>/keys-panel.html</td></tr><tr><td>Live metrics</td><td><span class="o">http://localhost:8765</span>/metrics.html</td><td>/metrics-panel.html</td></tr><tr><td>Controller (gamepad)</td><td><span class="o">http://localhost:8765</span>/pad.html</td><td>/pad-panel.html</td></tr></tbody></table></div>
+<p class="tip">No typing needed: right-click the tray icon &gt; <em>Salin URL overlay</em> (copy overlay URL). Add each overlay as its own Browser Source so you can position and size them freely.</p>
+<h2>2. Mouse trail</h2>
+<ul><li><strong>Normal mode:</strong> hold left click and move the mouse; a trail appears and fades away. Release the button and it disappears. Without a click the overlay stays idle.</li><li><strong>Always-on mode:</strong> press <strong>Selalu aktif</strong> (always on) under the preview, or tick it in the <em>Pemicu</em> (trigger) group, so the trail follows the mouse at all times with no button needed. Press again to turn it off. It works best together with <em>Titik terkunci di tengah</em> (dot locked in the center).</li><li>Quick toggle while playing: tray menu <em>Ekor mouse selalu aktif</em>, or open <code><span class="o">http://localhost:8765</span>/api/always?on=toggle</code> (for example from a Stream Deck).</li><li>Pick a <strong>preset</strong> (Neon Biru, Api, Laser Merah, Matrix, Pelangi, ...), then tune colors, trail length, thickness, glow and head dot.</li><li><strong>Dot locked in the center:</strong> Gerakan (movement) &gt; <em>Saat mencapai tepi layar</em> (at screen edge) &gt; <em>Titik terkunci di tengah</em>. The dot stays put and the trail streams away from it.</li><li><strong>Sensitivity:</strong> match it to your in-game sensitivity so the trail length reflects real movement.</li><li>The trigger button can be changed (right, middle, Mouse 4/5), in hold or toggle mode.</li><li>Overlay border, grid background and the watermark live in the <em>Latar (opsional)</em> and <em>Watermark</em> groups.</li></ul>
+<h2>3. Keyboard + mouse</h2>
+<ul><li>Shows the keys you press: <strong>1 2 3 4, Q W E R, A S D F G, SHIFT Z C V, TAB, CTRL, ALT, SPACE</strong> plus a mouse (left, right, middle, scroll, thumb forward and back).</li><li><strong>Drag keys</strong> in the preview to move them. <strong>Click a key</strong> to change its label, size, or remove it. Use <em>Tambah tombol</em> (add key) for any other key (A-Z, 0-9, F1-F12, arrows, ...).</li><li>Choose a <strong>layout preset</strong> (full FPS, minimal WASD, mouse only) and a <strong>style preset</strong> (Neon, Flat, 3D keycap, Glass).</li><li>Tune colors, glow, press animation, size, board position and <em>sembunyikan otomatis</em> (auto-hide when idle).</li></ul>
+<p class="tip">Privacy: the server only forwards the keys that are in your layout. Everything else you type (passwords, chat, ...) is never sent to the overlay and never stored.</p>
+<h2>4. Live metrics</h2>
+<ul><li>Add <code><span class="o">http://localhost:8765</span>/metrics.html</code> as a Browser Source and configure it in the <strong>Metrik</strong> panel. Four cards show: <strong>mouse speed</strong> (cm/s; enter your mouse DPI in the panel), <strong>clicks per second (CPS)</strong> with the recent peak, <strong>click hold time</strong> (current, last, average) and <strong>aim stability</strong>.</li><li><strong>Stability</strong> is how straight and smooth your mouse movement is while shooting: 100% means smooth, lower means more back-and-forth shake. It is a rough indicator, not an official score.</li><li>Choose the layout (row / column / grid), bars and mini graph, which button is counted, and use <strong>Reset sesi</strong> to clear peaks and the click counter.</li></ul>
+<h2>5. Controller overlay (gamepad)</h2>
+<ul><li>Add <code><span class="o">http://localhost:8765</span>/pad.html</code>. It shows buttons, <strong>analog triggers</strong> and <strong>sticks with a motion trail</strong> for Xbox / XInput-compatible controllers.</li><li>PlayStation or Switch Pro controllers work through Steam Input or DS4Windows; pick the <strong>PlayStation</strong> label set so the symbols match.</li><li>Choose which controller (1-4), the stick dead zone, scale and position. AimTrail only <strong>reads</strong> the controller.</li></ul>
+<h2>6. Shared theme and animations</h2>
+<ul><li>The <strong>Tema</strong> page controls colors, font, shape and <strong>enter/exit animations</strong> for every overlay at once, with a live preview of all of them together.</li><li>The <strong>Metrics</strong> and <strong>Controller</strong> overlays always use the theme. For <strong>Mouse trail</strong> and <strong>Keyboard + mouse</strong>, tick <em>Ikuti tema bersama</em> (follow shared theme) on the Tema page or in their own settings.</li><li>Animations: pick the enter style (slide up/down/sideways, zoom, fade), the exit style, duration and motion (smooth / springy). Overlays animate in when OBS shows them and whenever activity resumes after auto-hide.</li></ul>
+<h2>7. Tray menu (right-click)</h2>
+<ul><li><strong>Open panel</strong> for each overlay (double-click the icon = mouse trail panel), <strong>Panel lainnya</strong> (metrics, controller, theme) and <strong>Open guide</strong>.</li><li><strong>Ekor mouse selalu aktif</strong> toggles always-on mode; <strong>Salin URL overlay</strong> copies an overlay URL straight into OBS.</li><li><strong>File OBS anti-putus</strong> copies the path of the local files that keep OBS sources connected.</li><li><strong>Run at Windows startup</strong>, <strong>Allow access from other PCs (LAN)</strong>, <strong>Pembaruan</strong> (updates), <strong>Open settings folder</strong>, <strong>About</strong>, <strong>Exit</strong> are also there.</li><li><strong>Updates:</strong> AimTrail checks for new versions automatically. If one exists you get a notification and a banner in the panel. Click <strong>Pasang</strong> (the overlay drops for a few seconds, then restarts by itself).</li></ul>
+<h2>8. Two PCs (game on PC A, OBS on PC B)</h2>
+<ol><li>On PC A, enable <strong>Allow access from other PCs (LAN)</strong> in the tray menu.</li><li>In OBS on PC B, use <code>http://IP-OF-PC-A:8765/overlay.html</code> (the IP appears in the tray notification).</li><li>Allow port 8765 in PC A's firewall. Use this only on a network you trust.</li></ol>
+<h2>9. Tips for a light, smooth overlay</h2>
+<ul><li>Browser Source: tick <strong>Use custom frame rate</strong> and enter <strong>60</strong> (some OBS versions default to only 30 FPS).</li><li>OBS &gt; Settings &gt; Advanced: enable <strong>browser source hardware acceleration</strong>, then restart OBS.</li><li>Feels heavy? Panel &gt; <em>Performa &amp; kehalusan</em> &gt; <strong>Kualitas render = Ringan</strong> (render quality = light), or turn glow off.</li><li>Add <code>?debug=1</code> to the end of an overlay URL to see FPS and data per second.</li><li>Using several overlays? The watermark automatically shows on only one of them.</li></ul>
+<h2>10. Troubleshooting</h2>
+<div class="tw"><table><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody><tr><td>Panel says "mode simulasi" (simulation mode)</td><td>Raw Input failed or you are not on Windows. Check <code>aimtrail.log</code> (tray &gt; open settings folder).</td></tr><tr><td>Nothing reacts while gaming</td><td>If the game runs as Administrator, run AimTrail as Administrator too.</td></tr><tr><td>Settings do not change in OBS</td><td>Right-click the Browser Source &gt; Properties &gt; <strong>Refresh cache of current page</strong>.</td></tr><tr><td>Trail keeps showing without any click</td><td><em>Selalu aktif</em> (always on) is ON. Turn it off with the panel button or the tray menu.</td></tr><tr><td>Update failed or does not appear</td><td>Make sure you are online. Tray &gt; Pembaruan &gt; check now. If it still fails, download manually from the GitHub Releases page.</td></tr><tr><td>OBS started before AimTrail, source is empty or shows an error</td><td>Switch the source to <strong>Local file</strong> mode (the <em>Anti-putus</em> card in the panel). For URL sources: right-click &gt; Refresh, or tick <em>Refresh browser when scene becomes active</em>.</td></tr><tr><td>AimTrail vanished from the tray after clicking Pasang</td><td>The new version is installed: just open AimTrail.exe again. If it repeats, send the <code>aimtrail.log</code> file to the author.</td></tr><tr><td>Overlay is blank in OBS</td><td>Open the URL in a normal browser; make sure the AimTrail icon is in the tray.</td></tr><tr><td>Port 8765 is used by another app</td><td>Change "port" in <code>settings.json</code>, restart, then update the URL in OBS.</td></tr><tr><td>SmartScreen / antivirus warning</td><td>The .exe is not code-signed and reads global input. Allow AimTrail.exe; do not turn antivirus off.</td></tr></tbody></table></div>
+<h2>11. Notes</h2>
+<ul><li>AimTrail only <strong>reads</strong> input through the standard Windows Raw Input and XInput APIs (no hooks, no injection into games). Every anti-cheat is different; for competitive games, check the official rules.</li><li>Settings are stored in <code>%APPDATA%\AimTrail</code> (config.json, keys.json, metrics.json, pad.json, theme.json, settings.json).</li></ul>
+</main>
+<footer>Created by <b>Andromache</b> · TikTok <a href="https://www.tiktok.com/@andromache.4k" target="_blank" rel="noopener">@andromache.4k</a> · v1.5.0</footer>
+<script>
+  // URL pada tabel mengikuti alamat/port yang sedang dipakai
+  document.querySelectorAll('.o').forEach(e => { e.textContent = location.origin; });
+</script>
+</body>
+</html>
