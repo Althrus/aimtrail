@@ -27,7 +27,7 @@ from aiohttp import web, WSMsgType
 
 import updater
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 BASE = Path(__file__).resolve().parent
 # file web: di dalam paket PyInstaller (_MEIPASS) bila dibekukan, selain itu di samping server.py

@@ -49,7 +49,7 @@
   <span class="right"><a href="/manual.en.html">English</a><a href="/Panduan-AimTrail.pdf" download>Unduh PDF</a></span>
 </header>
 <main>
-  <div class="hero"><h2>Panduan Singkat</h2><p>Ekor gerakan mouse, tombol keyboard &amp; mouse, metrik, dan controller untuk live stream (OBS dan software lain). Versi 1.6.0.</p></div>
+  <div class="hero"><h2>Panduan Singkat</h2><p>Ekor gerakan mouse, tombol keyboard &amp; mouse, metrik, dan controller untuk live stream (OBS dan software lain). Versi 1.6.1.</p></div>
 <h2>1. Mulai dalam 3 langkah</h2>
 <ol><li>Jalankan <strong>AimTrail.exe</strong>. Ikon muncul di system tray (dekat jam) dan panel terbuka di browser.</li><li>Di OBS: <strong>Sources &gt; + &gt; Browser</strong>. Isi Width/Height sesuai kanvas OBS (mis. 1920 x 1080) dan FPS <strong>60</strong>. <strong>Disarankan:</strong> centang <strong>Local file</strong> lalu pilih file dari kartu <em>Anti-putus</em> di panel (atau tray &gt; File OBS anti-putus). Dengan cara ini source tetap tersambung walau OBS dibuka sebelum AimTrail. Alternatif: tempel URL dari tabel di bawah.</li><li>Atur tampilan di panel. Perubahan langsung terlihat di OBS, tanpa refresh.</li></ol>
 <div class="tw"><table><thead><tr><th>Overlay</th><th>URL Browser Source</th><th>Panel pengaturan</th></tr></thead><tbody><tr><td>Ekor gerakan mouse</td><td><span class="o">http://localhost:8765</span>/overlay.html</td><td>/panel.html</td></tr><tr><td>Tombol keyboard + mouse</td><td><span class="o">http://localhost:8765</span>/keys.html</td><td>/keys-panel.html</td></tr><tr><td>Metrik live</td><td><span class="o">http://localhost:8765</span>/metrics.html</td><td>/metrics-panel.html</td></tr><tr><td>Controller (gamepad)</td><td><span class="o">http://localhost:8765</span>/pad.html</td><td>/pad-panel.html</td></tr><tr><td>Arah gerak mouse</td><td><span class="o">http://localhost:8765</span>/dir.html</td><td>/dir-panel.html</td></tr></tbody></table></div>
@@ -78,7 +78,7 @@
 <h2>12. Catatan</h2>
 <ul><li>AimTrail hanya <strong>membaca</strong> input lewat Raw Input dan XInput standar Windows (tanpa hook atau injeksi ke game). Kebijakan tiap anti-cheat berbeda; untuk game kompetitif, cek aturan resminya.</li><li>Pengaturan tersimpan di <code>%APPDATA%\AimTrail</code> (config.json, keys.json, metrics.json, pad.json, theme.json, settings.json).</li></ul>
 </main>
-<footer>Created by <b>Andromache</b> · TikTok <a href="https://www.tiktok.com/@andromache.4k" target="_blank" rel="noopener">@andromache.4k</a> · v1.6.0</footer>
+<footer>Created by <b>Andromache</b> · TikTok <a href="https://www.tiktok.com/@andromache.4k" target="_blank" rel="noopener">@andromache.4k</a> · v1.6.1</footer>
 <script>
   // URL pada tabel mengikuti alamat/port yang sedang dipakai
   document.querySelectorAll('.o').forEach(e => { e.textContent = location.origin; });

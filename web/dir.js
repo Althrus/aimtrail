@@ -6,6 +6,8 @@ const DEFAULTS = {
   style: 'chevron', axes: 'both', showCenter: true, showSpeed: false,
   dpi: 800, maxSpeedCm: 60, attack: 60, decay: 320, deadzone: 0.02, gamma: 0.65, invertX: false, invertY: false,
   scale: 1, posX: 50, posY: 50, autoHide: false, autoHideSec: 3,
+  colorMode: 'theme', cMain: '#38bdf8', cGlow: '#38bdf8', cRing: '#2a4a66', cTrack: '#0f1b2d', cDot: '#38bdf8', cText: '#e0f2fe',
+  glowOn: true, glowSize: 7, thick: 10, dim: 0.14, speedColor: false, cFast: '#ff2d55',
   wm: true, wmPos: 'br', wmOpacity: 0.65, wmScale: 1, wmMargin: 18
 };
 
@@ -47,6 +49,20 @@ const SCHEMA = [
     { k: 'axes', l: 'Sumbu', t: 'select', o: { both: 'Kiri-kanan dan atas-bawah', x: 'Hanya kiri-kanan' } },
     { k: 'showCenter', l: 'Titik pusat bergerak', t: 'check' },
     { k: 'showSpeed', l: 'Tampilkan angka kecepatan (cm/dtk)', t: 'check' }] },
+  { g: 'Warna', items: [
+    { k: 'colorMode', l: 'Sumber warna', t: 'select', o: { theme: 'Ikuti tema bersama (halaman Tema)', custom: 'Warna sendiri untuk overlay ini' } },
+    { k: 'cMain', l: 'Warna utama (panah, busur, jarum, isi bar)', t: 'color' },
+    { k: 'cDot', l: 'Warna titik pusat', t: 'color' },
+    { k: 'cRing', l: 'Warna lingkaran / garis tepi', t: 'color' },
+    { k: 'cTrack', l: 'Warna latar bar', t: 'color' },
+    { k: 'cText', l: 'Warna angka kecepatan', t: 'color' },
+    { k: 'glowOn', l: 'Efek glow', t: 'check' },
+    { k: 'cGlow', l: 'Warna glow', t: 'color' },
+    { k: 'glowSize', l: 'Besar glow', t: 'range', min: 0, max: 30, step: 1, u: ' px' },
+    { k: 'thick', l: 'Ketebalan garis panah dan busur', t: 'range', min: 4, max: 20, step: 1, u: ' px' },
+    { k: 'dim', l: 'Terang bagian yang mati (0 = hilang)', t: 'range', min: 0, max: 0.6, step: 0.02, p: 1 },
+    { k: 'speedColor', l: 'Warna berubah saat gerakan makin cepat', t: 'check' },
+    { k: 'cFast', l: 'Warna saat gerakan paling cepat', t: 'color' }] },
   { g: 'Respons', items: [
     { k: 'dpi', l: 'DPI mouse', t: 'range', min: 100, max: 3200, step: 50, u: '' },
     { k: 'maxSpeedCm', l: 'Kecepatan penuh (semua panah menyala)', t: 'range', min: 10, max: 200, step: 5, u: ' cm/dtk' },
@@ -77,23 +93,25 @@ const CSS = `
 .dr-wrap{position:absolute;left:0;top:0;visibility:hidden}
 .dr-board{transform-origin:0 0}
 .dr-svg{display:block;overflow:visible}
-.dr-ch{fill:none;stroke:var(--t-accent);stroke-width:10;stroke-linecap:round;stroke-linejoin:round}
-.dr-arm.on{filter:drop-shadow(0 0 7px var(--t-glow))}
-.dr-ring{fill:none;stroke:var(--t-border);stroke-width:3}
-.dr-dot{fill:var(--t-accent)}
-.dr-tick{stroke:var(--t-accent);stroke-width:6;stroke-linecap:round}
+.dr-ch{fill:none;stroke:var(--t-accent);stroke-width:calc(var(--dr-thick,10)*1px);stroke-linecap:round;stroke-linejoin:round}
+.dr-arm.on{filter:drop-shadow(0 0 var(--dr-gs,7px) var(--t-glow))}
+.dr-ring{fill:none;stroke:var(--dr-ring,var(--t-border));stroke-width:3}
+.dr-dot{fill:var(--dr-dot,var(--t-accent))}
+.dr-tick{stroke:var(--t-accent);stroke-width:calc(var(--dr-thick,10)*.6px);stroke-linecap:round}
 .dr-needle{fill:var(--t-accent)}
-.dr-track{fill:var(--t-panel);stroke:var(--t-border);stroke-width:2.5}
+.dr-track{fill:var(--dr-track,var(--t-panel));stroke:var(--dr-ring,var(--t-border));stroke-width:2.5}
 .dr-fill{fill:var(--t-accent)}
 .dr-tip{fill:var(--t-accent)}
 .dr-mid{stroke:var(--t-muted);stroke-width:2;opacity:.6}
-.dr-val{fill:var(--t-text);font:700 22px var(--t-font);text-shadow:0 0 8px var(--t-glow)}
-.dr-glow{filter:drop-shadow(0 0 8px var(--t-glow))}
+.dr-val{fill:var(--dr-text,var(--t-text));font:700 22px var(--t-font);text-shadow:0 0 var(--dr-gs,8px) var(--t-glow)}
+.dr-glow{filter:drop-shadow(0 0 var(--dr-gs,8px) var(--t-glow))}
 `;
 let cssDone = false;
 const ensureCss = () => { if (cssDone) return; const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s); cssDone = true; };
 const mk = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const hexRgb = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h || ''); const n = m ? parseInt(m[1], 16) : 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const mixHex = (a, b, k) => { const x = hexRgb(a), y = hexRgb(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * k).toString(16).padStart(2, '0')).join(''); };
 const f2 = v => (Math.round(v * 100) / 100).toString();
 
 function chevronSvg(c) {
@@ -150,6 +168,7 @@ class DirView {
     this.rootEl.innerHTML = ''; this.dim = { w: kind.w, h: kind.h };
     const board = this.board = mk('div', 'dr-board');
     if (root.AimTheme) root.AimTheme.applyVars(board, this.theme);
+    this.applyColors(board);
     board.innerHTML = kind.html;
     this.q = {
       arms: [...board.querySelectorAll('.dr-arm')].map(e => ({ e, d: e.dataset.d, ch: [...e.querySelectorAll('.dr-ch')], lv: -1 })),
@@ -168,6 +187,25 @@ class DirView {
       if (this._visible === false) this.anim.hide(this.theme, true); else this.anim.show(this.theme, !first || this.opts.editable);
       this._visible = this.anim.visible;
     }
+  }
+
+  /** Warna sendiri (colorMode 'custom') menimpa variabel tema pada papan ini saja; glow, ketebalan, dan redup selalu dari pengaturan. */
+  applyColors(board) {
+    const c = this.cfg, st = board.style, th = this.theme || {}, custom = c.colorMode === 'custom';
+    this._main = custom ? c.cMain : (th.accent || DEFAULTS.cMain); this._glow = custom ? c.cGlow : (th.glow || this._main);
+    if (custom) {
+      st.setProperty('--t-accent', c.cMain); st.setProperty('--t-glow', c.cGlow);
+      st.setProperty('--dr-dot', c.cDot); st.setProperty('--dr-ring', c.cRing); st.setProperty('--dr-track', c.cTrack); st.setProperty('--dr-text', c.cText);
+    }
+    st.setProperty('--dr-gs', (c.glowOn ? c.glowSize : 0) + 'px'); st.setProperty('--dr-thick', String(c.thick));
+    this._mixed = -1;
+  }
+  /** Saat 'warna berubah saat cepat' aktif: campur warna utama dan glow dengan warna cepat sesuai besar gerak. */
+  tint(mag) {
+    const c = this.cfg, st = this.board && this.board.style;
+    if (!st || !c.speedColor) return;
+    const k = Math.round(mag * 40) / 40; if (k === this._mixed) return; this._mixed = k;
+    st.setProperty('--t-accent', mixHex(this._main, c.cFast, k)); st.setProperty('--t-glow', mixHex(this._glow, c.cFast, k));
   }
 
   place() {
@@ -206,19 +244,21 @@ class DirView {
 
   draw(now) {
     const s = this.m.shape(), q = this.q, st = this.cfg.style;
+    this.tint(s.mag);
     if (st === 'compass') this._compass(s); else if (st === 'bar') this._bar(s); else this._chevron(s, now);
     if (q.dot) { const k = st === 'compass' ? 20 : 22; q.dot.setAttribute('cx', f2(200 + s.x * k)); q.dot.setAttribute('cy', f2(200 + s.y * k)); }
     if (q.val) { const t = s.speed.toFixed(1) + ' cm/s'; if (q.val.textContent !== t) q.val.textContent = t; }
   }
 
   _chevron(s, now) {
+    const d = this.cfg.dim;
     for (const a of this.q.arms) {
       const lv = a.d === 'R' ? Math.max(0, s.x) : a.d === 'L' ? Math.max(0, -s.x) : a.d === 'D' ? Math.max(0, s.y) : Math.max(0, -s.y);
       a.e.setAttribute('transform', `translate(${f2(lv * 18)} 0)`);
       a.e.classList.toggle('on', lv > 0.05);
       a.ch.forEach((p, i) => {
         const shimmer = lv > 0.1 ? 0.88 + 0.12 * Math.sin(now / 110 - i * 1.3) : 1;
-        p.style.opacity = f2((0.14 + 0.86 * clamp(lv * 3 - i, 0, 1)) * shimmer);
+        p.style.opacity = f2((d + (1 - d) * clamp(lv * 3 - i, 0, 1)) * shimmer);
       });
     }
   }
@@ -226,7 +266,7 @@ class DirView {
     const q = this.q, nx = s.mag > 0 ? s.x / s.mag : 0, ny = s.mag > 0 ? s.y / s.mag : 0;
     q.ticks.forEach((t, i) => {
       const th = i * 7.5 * Math.PI / 180, dot = Math.sin(th) * nx - Math.cos(th) * ny, b = s.mag * Math.pow(Math.max(0, dot), 3);
-      t.style.opacity = f2(0.12 + 0.88 * b); t.setAttribute('y2', f2(76 - 22 * b));
+      t.style.opacity = f2(this.cfg.dim + (1 - this.cfg.dim) * b); t.setAttribute('y2', f2(76 - 22 * b));
     });
     if (q.needle) {
       const deg = Math.atan2(nx, -ny) * 180 / Math.PI, sc = 0.35 + 0.65 * s.mag;
@@ -240,7 +280,7 @@ class DirView {
     if (q.fillV) { const h = Math.abs(s.y) * 63; q.fillV.setAttribute('height', f2(h)); q.fillV.setAttribute('y', f2(s.y >= 0 ? 75 : 75 - h)); }
     for (const t of q.tips) {
       const v = t.dataset.t === 'R' ? s.x : t.dataset.t === 'L' ? -s.x : t.dataset.t === 'D' ? s.y : -s.y;
-      t.style.opacity = f2(0.18 + 0.82 * clamp(v * 1.4, 0, 1)); t.classList.toggle('dr-glow', v > 0.35);
+      t.style.opacity = f2(this.cfg.dim + (1 - this.cfg.dim) * clamp(v * 1.4, 0, 1)); t.classList.toggle('dr-glow', v > 0.35);
     }
   }
 }
