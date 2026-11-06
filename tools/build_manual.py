@@ -13,18 +13,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from manual_en import CONTENT_EN  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 TIKTOK = "https://www.tiktok.com/@andromache.4k"
 
 LANG = {
     "id": dict(title="AimTrail - Panduan Singkat", hero="Panduan Singkat", html="manual.html", pdf="Panduan-AimTrail.pdf", dl="Unduh PDF", page="Halaman",
                sub="Ekor gerakan mouse, tombol keyboard & mouse, metrik, dan controller untuk live stream (OBS dan software lain)",
-               nav=[("/panel.html", "Ekor mouse"), ("/keys-panel.html", "Keyboard & mouse"), ("/metrics-panel.html", "Metrik"), ("/pad-panel.html", "Controller"),
+               nav=[("/panel.html", "Ekor mouse"), ("/keys-panel.html", "Keyboard & mouse"), ("/metrics-panel.html", "Metrik"), ("/pad-panel.html", "Controller"), ("/dir-panel.html", "Arah gerak"),
                     ("/tema.html", "Tema"), ("/manual.html", "Panduan")], other=("/manual.en.html", "English"), version="Versi", lang="id"),
     "en": dict(title="AimTrail - Quick Guide", hero="Quick Guide", html="manual.en.html", pdf="AimTrail-Guide.pdf", dl="Download PDF", page="Page",
                sub="Mouse trail, keyboard & mouse display, live metrics and controller overlays for live streaming (OBS and other software)",
-               nav=[("/panel.html", "Mouse trail"), ("/keys-panel.html", "Keyboard & mouse"), ("/metrics-panel.html", "Metrics"), ("/pad-panel.html", "Controller"),
+               nav=[("/panel.html", "Mouse trail"), ("/keys-panel.html", "Keyboard & mouse"), ("/metrics-panel.html", "Metrics"), ("/pad-panel.html", "Controller"), ("/dir-panel.html", "Direction"),
                     ("/tema.html", "Theme"), ("/manual.en.html", "Guide")], other=("/manual.html", "Bahasa Indonesia"), version="Version", lang="en"),
 }
 CONTENTS = {}
@@ -32,7 +32,7 @@ CONTENTS = {}
 # ---- isi: ('h', judul) ('p', teks) ('ol'|'ul', [item]) ('table', [header], [[sel]]) ('tip', teks)
 # markup: **tebal**  *miring*  `kode`  {O} = alamat server
 CONTENT_ID = [
-    ("h", "1. Mulai dalam 3 langkah"),
+    ("h", "Mulai dalam 3 langkah"),
     ("ol", [
         "Jalankan **AimTrail.exe**. Ikon muncul di system tray (dekat jam) dan panel terbuka di browser.",
         "Di OBS: **Sources > + > Browser**. Isi Width/Height sesuai kanvas OBS (mis. 1920 x 1080) dan FPS **60**. "
@@ -45,11 +45,12 @@ CONTENT_ID = [
         ["Tombol keyboard + mouse", "{O}/keys.html", "/keys-panel.html"],
         ["Metrik live", "{O}/metrics.html", "/metrics-panel.html"],
         ["Controller (gamepad)", "{O}/pad.html", "/pad-panel.html"],
+        ["Arah gerak mouse", "{O}/dir.html", "/dir-panel.html"],
     ]),
     ("tip", "Tidak perlu mengetik URL: klik kanan ikon tray > **Salin URL overlay**. "
             "Pasang tiap overlay sebagai Browser Source terpisah agar bebas diatur posisi dan ukurannya."),
 
-    ("h", "2. Ekor gerakan mouse"),
+    ("h", "Ekor gerakan mouse"),
     ("ul", [
         "**Mode normal:** tahan klik kiri lalu gerakkan mouse, ekor muncul dan memudar. Lepas klik, ekor hilang. Tanpa klik, overlay diam.",
         "**Mode selalu aktif:** tekan tombol **Selalu aktif** di bawah preview (atau centang di grup *Pemicu*) agar ekor mengikuti gerakan mouse "
@@ -62,7 +63,7 @@ CONTENT_ID = [
         "Garis tepi overlay, latar grid, dan watermark ada di grup *Latar (opsional)* dan *Watermark*.",
     ]),
 
-    ("h", "3. Tombol keyboard + mouse"),
+    ("h", "Tombol keyboard + mouse"),
     ("ul", [
         "Menampilkan tombol yang sedang ditekan: **1 2 3 4, Q W E R, A S D F G, SHIFT Z C V, TAB, CTRL, ALT, SPACE** "
         "ditambah mouse (klik kiri, kanan, tengah, scroll, thumb depan dan belakang).",
@@ -74,7 +75,7 @@ CONTENT_ID = [
     ("tip", "Privasi: server hanya meneruskan tombol yang ada di layout-mu. Ketikan lain (password, chat, dll.) "
             "tidak pernah dikirim ke overlay dan tidak disimpan."),
 
-    ("h", "4. Metrik live (kecepatan, CPS, tahan klik, stabilitas)"),
+    ("h", "Metrik live (kecepatan, CPS, tahan klik, stabilitas)"),
     ("ul", [
         "Pasang `{O}/metrics.html` sebagai Browser Source dan atur di panel **Metrik**. Empat kartu menampilkan: **kecepatan mouse** (cm/dtk, isi DPI mouse-mu di panel), "
         "**klik per detik (CPS)** beserta puncaknya, **durasi tahan klik** (sekarang, terakhir, rata-rata), dan **stabilitas bidikan**.",
@@ -82,21 +83,29 @@ CONTENT_ID = [
         "Pilih susunan (baris / kolom / kotak), bar dan grafik mini, tombol yang dihitung, lalu **Reset sesi** untuk menghapus puncak dan hitungan klik.",
     ]),
 
-    ("h", "5. Overlay controller (gamepad)"),
+    ("h", "Arah gerak mouse (panah dinamis)"),
+    ("ul", [
+        "Pasang `{O}/dir.html` dan atur di panel **Arah gerak**. Overlay ini menunjukkan **ke mana** dan **seberapa cepat** mouse bergerak, kiri-kanan dan atas-bawah.",
+        "Tiga gaya: **panah chevron** (tiap arah punya tiga panah yang menyala bertingkat sesuai kecepatan; arah miring menyalakan dua arah sekaligus), "
+        "**kompas melingkar** (busur menyala ke arah gerak dengan jarum yang memanjang), dan **bar keseimbangan** (terisi dari tengah ke kiri atau kanan).",
+        "Atur DPI dan *kecepatan penuh* agar sesuai gaya mainmu, seberapa cepat panah menyala dan meredup, zona mati, serta balik arah. Bisa hanya kiri-kanan, dengan angka kecepatan dan titik pusat yang ikut bergerak.",
+    ]),
+
+    ("h", "Overlay controller (gamepad)"),
     ("ul", [
         "Pasang `{O}/pad.html`. Menampilkan tombol, **trigger analog**, dan **stik dengan jejak gerak** untuk controller Xbox atau yang kompatibel XInput.",
         "Controller PlayStation atau Switch Pro bisa dipakai lewat Steam Input atau DS4Windows; pilih label **PlayStation** agar simbolnya sesuai.",
         "Atur controller yang dipakai (1-4), zona mati stik, skala, dan posisi. AimTrail hanya **membaca** controller.",
     ]),
 
-    ("h", "6. Tema bersama dan animasi"),
+    ("h", "Tema bersama dan animasi"),
     ("ul", [
         "Halaman **Tema** mengatur warna, huruf, bentuk, dan **animasi masuk/keluar** untuk semua overlay sekaligus, dengan pratinjau yang menampilkan semuanya bersamaan.",
         "Overlay **Metrik** dan **Controller** selalu memakai tema. Untuk **Ekor mouse** dan **Keyboard + mouse**, centang *Ikuti tema bersama* (di halaman Tema atau di pengaturannya).",
         "Animasi: pilih gaya masuk (naik, turun, dari samping, zoom, memudar), gaya keluar, durasi, dan gerak (halus / memantul). Overlay muncul dengan animasi saat OBS menampilkannya dan saat ada aktivitas setelah sembunyi-otomatis.",
     ]),
 
-    ("h", "7. Menu ikon tray (klik kanan)"),
+    ("h", "Menu ikon tray (klik kanan)"),
     ("ul", [
         "**Buka panel** ekor mouse / keyboard + mouse (klik dua kali ikon = panel ekor mouse), **Panel lainnya** (metrik, controller, tema), dan **Buka panduan**.",
         "**File OBS anti-putus** menyalin lokasi file lokal yang menjaga source OBS tetap tersambung.",
@@ -105,14 +114,14 @@ CONTENT_ID = [
         "**Pembaruan:** AimTrail memeriksa versi baru otomatis. Jika ada, muncul notifikasi dan spanduk di panel. Klik **Pasang** (overlay terputus beberapa detik lalu menyala sendiri).",
     ]),
 
-    ("h", "8. Dua PC (game di PC A, OBS di PC B)"),
+    ("h", "Dua PC (game di PC A, OBS di PC B)"),
     ("ol", [
         "Di PC A, aktifkan **Izinkan akses dari PC lain (LAN)** pada menu tray.",
         "Di OBS pada PC B, pakai URL `http://IP-PC-A:8765/overlay.html` (IP muncul di notifikasi tray).",
         "Izinkan port 8765 di firewall PC A. Gunakan hanya di jaringan yang kamu percaya.",
     ]),
 
-    ("h", "9. Tips agar ringan dan mulus"),
+    ("h", "Tips agar ringan dan mulus"),
     ("ul", [
         "Browser Source: centang **Use custom frame rate** dan isi **60** (default sebagian versi OBS hanya 30 FPS).",
         "OBS > Settings > Advanced: aktifkan **browser source hardware acceleration**, lalu restart OBS.",
@@ -121,7 +130,7 @@ CONTENT_ID = [
         "Memakai beberapa overlay? Watermark otomatis hanya tampil di satu overlay.",
     ]),
 
-    ("h", "10. Pemecahan masalah"),
+    ("h", "Pemecahan masalah"),
     ("table", ["Gejala", "Solusi"], [
         ["Panel tertulis \"mode simulasi\"", "Raw Input gagal atau bukan Windows. Lihat `aimtrail.log` (tray > Buka folder pengaturan)."],
         ["Tidak bereaksi saat main", "Jika game berjalan sebagai Administrator, jalankan AimTrail sebagai Administrator juga."],
@@ -135,7 +144,7 @@ CONTENT_ID = [
         ["SmartScreen / antivirus memberi peringatan", ".exe tidak bertanda tangan digital dan membaca input global. Kecualikan file AimTrail.exe; jangan mematikan antivirus."],
     ]),
 
-    ("h", "11. Catatan"),
+    ("h", "Catatan"),
     ("ul", [
         "AimTrail hanya **membaca** input lewat Raw Input dan XInput standar Windows (tanpa hook atau injeksi ke game). "
         "Kebijakan tiap anti-cheat berbeda; untuk game kompetitif, cek aturan resminya.",
@@ -156,11 +165,12 @@ def inline_html(t):
 
 
 def build_html(lang):
-    L, out = LANG[lang], []
+    L, out, n = LANG[lang], [], 0
     for blk in CONTENTS[lang]:
         k = blk[0]
         if k == "h":
-            out.append(f"<h2>{inline_html(blk[1])}</h2>")
+            n += 1
+            out.append(f"<h2>{n}. {inline_html(blk[1])}</h2>")
         elif k == "p":
             out.append(f"<p>{inline_html(blk[1])}</p>")
         elif k in ("ol", "ul"):
@@ -287,10 +297,11 @@ def build_pdf(lang, path):
                                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")])]))
         return [Spacer(1, 4), t, Spacer(1, 2)]
 
-    story, pending = [], None
+    story, pending, n = [], None, 0
     for blk in CONTENTS[lang]:
         if blk[0] == "h":
-            pending = Paragraph(md(blk[1]), h2)
+            n += 1
+            pending = Paragraph(md(f"{n}. {blk[1]}"), h2)
             continue
         flows = flows_for(blk)
         if pending is not None:

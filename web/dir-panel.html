@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AimTrail — Arah gerak</title>
+<link rel="stylesheet" href="panel.css">
+<style>
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .preview[data-bg="white"] { background-color: #f1f5f9; background-image: none; }
+  .preview[data-bg="black"] { background-color: #000; background-image: none; }
+  .preview[data-bg="game"] { background-image: linear-gradient(135deg, #1b2a1f, #3b2f22 55%, #20283b); background-size: auto; }
+  .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+  .card .bar { margin-top: 8px; }
+  .chips + .note { margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AimTrail</h1>
+  <nav id="nav"></nav>
+  <span class="pill" id="status"><i></i><span>Menunggu server…</span></span>
+</header>
+<script src="nav.js"></script>
+<main>
+  <section class="left">
+    <div class="preview" id="pv" data-bg="grid"><div id="stage"></div></div>
+    <p class="hint" id="hint">Gerakkan mouse ke segala arah (di dalam game juga): panah menyala sesuai arah dan kecepatan. Atau tekan Putar demo.</p>
+    <div class="bar">
+      <button class="primary" id="demo">Putar demo</button>
+      <select id="pvbg" aria-label="Latar preview">
+        <option value="grid">Latar: grid</option><option value="game">Latar: mirip game</option>
+        <option value="white">Latar: terang</option><option value="black">Latar: hitam</option>
+      </select>
+    </div>
+    <div class="card">
+      <h2>URL untuk OBS (Browser Source terpisah)</h2>
+      <div class="url"><input type="text" id="obsurl" readonly><button id="copy">Salin</button></div>
+    </div>
+    <div class="card">
+      <h2>Anti-putus untuk OBS (disarankan)</h2>
+      <p class="note" style="margin-top:0">Di Browser Source OBS centang <b>Local file</b>, lalu pilih file di bawah. Overlay tetap tersambung walau OBS dibuka sebelum AimTrail.</p>
+      <div class="url"><input type="text" id="obsfile" readonly><button id="copyfile">Salin lokasi</button></div>
+    </div>
+    <div class="card"><h2>Cara membaca</h2>
+      <p class="note" style="margin-top:0"><b>Panah chevron</b>: tiap arah punya tiga panah yang menyala bertingkat sesuai kecepatan; arah miring menyalakan dua arah sekaligus.
+      <b>Kompas</b>: busur di sekeliling menyala ke arah gerak dengan jarum yang memanjang. <b>Bar</b>: bar kiri-kanan (dan atas-bawah) terisi dari tengah seperti pengukur keseimbangan.
+      Atur DPI dan kecepatan penuh agar sesuai gaya mainmu.</p></div>
+  </section>
+  <section class="right" id="controls"></section>
+</main>
+<footer class="credit">Created by <b>Andromache</b> · TikTok <a href="https://www.tiktok.com/@andromache.4k" target="_blank" rel="noopener">@andromache.4k</a> · <a href="/manual.html">Panduan</a> · v<span id="ver">-</span></footer>
+<script src="trail.js"></script>
+<script src="theme.js"></script>
+<script src="anim.js"></script>
+<script src="keys.js"></script>
+<script src="wm.js"></script>
+<script src="dir.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let connected = false, source = '';
+const SW = 1920, SH = 1080; let scale = 1;
+function layout() {
+  scale = $('pv').clientWidth / SW;
+  const st = $('stage'); st.style.width = SW + 'px'; st.style.height = SH + 'px'; st.style.transform = `scale(${scale})`;
+  $('pv').style.height = (SH * scale) + 'px';
+  if (window.onLayout) window.onLayout();
+}
+new ResizeObserver(layout).observe($('pv')); layout();
+$('pvbg').onchange = e => { $('pv').dataset.bg = e.target.value; };
+function status() {
+  $('status').classList.toggle('on', connected);
+  $('status').lastElementChild.textContent = connected ? 'Terhubung · ' + (source === 'rawinput' ? 'perangkat asli' : 'mode simulasi') : 'Menunggu server…';
+}
+$('obsurl').value = location.origin + '/dir.html';
+const flash = (b, t) => { b.textContent = 'Tersalin'; setTimeout(() => b.textContent = t, 1200); };
+const clip = async (inp, btn, t) => { try { await navigator.clipboard.writeText(inp.value); } catch (_) { inp.select(); document.execCommand('copy'); } flash(btn, t); };
+$('copy').onclick = () => clip($('obsurl'), $('copy'), 'Salin');
+$('copyfile').onclick = () => clip($('obsfile'), $('copyfile'), 'Salin lokasi');
+fetch('/api/status').then(r => r.json()).then(s => { $('ver').textContent = s.version; if (s.obs) $('obsfile').value = s.obs['dir'] || ''; }).catch(() => {});
+const K = AimKeys, view = new AimDir.DirView($('stage'), { editable: true }), wm = AimWM.mount($('stage'));
+let cfgs = {}; const theme = () => AimTheme.merge(cfgs.tconfig);
+let timer; const push = () => { clearTimeout(timer); timer = setTimeout(() => net.send({ t: 'dconfig', config: view.cfg }), 150); };
+const controls = K.buildControls($('controls'), AimDir.SCHEMA, () => view.cfg, (k, v) => {
+  view.setConfig(Object.assign({}, view.cfg, { [k]: v })); wm.apply(view.cfg); push();
+});
+function apply(c) { view.setConfig(c || {}); controls.sync(); wm.apply(view.cfg); }
+const net = AimTrail.connect({
+  sub: 'dir',
+  onStatus(ok) { connected = ok; status(); },
+  onMessage(m) {
+    if (Array.isArray(m)) return view.feed(m);
+    if (m.t === 'hello') { source = m.src; status(); cfgs = { tconfig: m.tconfig }; view.setTheme(theme()); apply(m.dconfig); }
+    else if (m.t === 'dconfig') apply(m.config);
+    else if (m.t === 'tconfig') { cfgs.tconfig = m.config; view.setTheme(theme()); }
+  }
+});
+let demoT;   // demo: kanan, kiri, atas, bawah, lalu berputar
+$('demo').onclick = () => {
+  clearInterval(demoT); let n = 0;
+  demoT = setInterval(() => {
+    const t = n++ * 0.016; let dx = 0, dy = 0;
+    if (t < 1.2) dx = 90; else if (t < 2.4) dx = -90; else if (t < 3.2) dy = -70; else if (t < 4) dy = 70;
+    else if (t < 6.4) { dx = Math.cos((t - 4) * 3) * 80; dy = Math.sin((t - 4) * 3) * 80; }
+    view.move(dx, dy);
+    if (t > 7.6) clearInterval(demoT);
+  }, 16);
+};
+setTimeout(() => $('demo').click(), 600); status();
+</script>
+</body>
+</html>

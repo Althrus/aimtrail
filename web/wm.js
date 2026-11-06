@@ -34,7 +34,7 @@ function mount(host) {
   };
 }
 /** Hanya satu overlay yang menampilkan watermark: yang berprioritas tertinggi di antara yang terhubung. */
-const ORDER = ['trail', 'keys', 'metrics', 'pad'], CFGKEY = { trail: 'config', keys: 'kconfig', metrics: 'mconfig', pad: 'pconfig' };
+const ORDER = ['trail', 'keys', 'metrics', 'pad', 'dir'], CFGKEY = { trail: 'config', keys: 'kconfig', metrics: 'mconfig', pad: 'pconfig', dir: 'dconfig' };
 function shouldHide(me, peers, cfgs) {
   for (const k of ORDER) {
     if (k === me) break;

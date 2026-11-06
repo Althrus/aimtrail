@@ -116,6 +116,19 @@ def already_running():
     return False
 
 
+def consume_update_flag(data, args):
+    """Skrip pembantu meninggalkan just_updated.flag setelah mengganti file: mulai tanpa membuka panel + beri tahu."""
+    flag = Path(data) / "just_updated.flag"
+    args.updated = flag.exists()
+    if args.updated:
+        args.minimized = True
+        try:
+            flag.unlink()
+        except OSError:
+            pass
+    return args.updated
+
+
 def wait_for_slot(is_running, timeout=15.0, interval=0.5, sleep=time.sleep, clock=time.monotonic):
     """Tunggu sampai instance lama benar-benar bebas (setelah pembaruan). True jika akhirnya bebas."""
     end = clock() + timeout
@@ -231,6 +244,7 @@ class TrayApp:
             I("Panel lainnya", M(
                 I("Metrik live", lambda i=None, it=None: webbrowser.open(self.url("metrics-panel.html"))),
                 I("Controller", lambda i=None, it=None: webbrowser.open(self.url("pad-panel.html"))),
+                I("Arah gerak", lambda i=None, it=None: webbrowser.open(self.url("dir-panel.html"))),
                 I("Tema & animasi", lambda i=None, it=None: webbrowser.open(self.url("tema.html"))),
             )),
             I("Buka panduan (manual)", self.open_manual),
@@ -244,6 +258,7 @@ class TrayApp:
                 I("Salin lokasi file: keyboard + mouse", self.copy_file_keys),
                 I("Salin lokasi file: metrik", self.copy_file_metrics),
                 I("Salin lokasi file: controller", self.copy_file_pad),
+                I("Salin lokasi file: arah gerak", self.copy_file_dir),
                 I("Buka folder file OBS", self.open_obs_folder),
             )),
             M.SEPARATOR,
@@ -314,9 +329,10 @@ class TrayApp:
     def install_update(self, icon=None, item=None):
         threading.Thread(target=self._install_worker, daemon=True).start()
 
-    def _install_worker(self, exe=None, relaunch=None):
-        """Unduh (bila belum) -> verifikasi -> ganti exe -> jalankan ulang. Mengembalikan True bila berhasil."""
+    def _install_worker(self, exe=None, relaunch=None, helper=None):
+        """Unduh (bila belum) -> verifikasi -> serahkan ke skrip pembantu (ganti file + nyalakan ulang). True bila diserahkan."""
         exe, relaunch = Path(exe or sys.executable), relaunch or updater.relaunch
+        use_helper = helper is not None or (IS_WIN and FROZEN and exe == Path(sys.executable))
         if not self._upd_lock.acquire(blocking=False):
             return False
         try:
@@ -337,6 +353,18 @@ class TrayApp:
                 if not (updater.STATE["ready"] and staged and Path(staged).exists()):
                     self.notify(f"Mengunduh pembaruan v{info['version']}...")
                     staged = updater.stage(info, exe.parent)
+                if use_helper:
+                    # Cara utama: skrip pembantu mandiri menunggu AimTrail menutup, mengganti file (mencoba ulang jika dikunci
+                    # antivirus), menyalakan versi baru, memastikannya berjalan, dan mencatat ke update.log.
+                    try:
+                        (helper or (lambda e, s: updater.spawn_helper(self.data, e, s)))(exe, staged)
+                    except Exception as e:  # noqa
+                        print("Skrip pembantu gagal dijalankan, memakai cara langsung:", repr(e))
+                        use_helper = False
+                    else:
+                        self.notify(f"Pembaruan v{info['version']} siap. AimTrail menutup dan menyala lagi dalam beberapa detik...")
+                        self.quit()
+                        return True
                 updater.apply(staged, exe)
             except Exception as e:  # noqa
                 print("Pembaruan gagal:", repr(e))
@@ -393,6 +421,11 @@ class TrayApp:
 
     def copy_file_pad(self, icon=None, item=None):
         p = self._obs_file(3)
+        copy_text(p)
+        self.notify(f"Lokasi file disalin. Di OBS centang Local file lalu tempel: {p}")
+
+    def copy_file_dir(self, icon=None, item=None):
+        p = self._obs_file(4)
         copy_text(p)
         self.notify(f"Lokasi file disalin. Di OBS centang Local file lalu tempel: {p}")
 
@@ -488,7 +521,11 @@ class TrayApp:
 
     def _setup(self, icon):
         icon.visible = True
-        if getattr(self.args, "wait_pid", None):
+        try:   # penanda "sudah berjalan": dibaca skrip pembantu pembaruan untuk memastikan versi baru menyala
+            (self.data / "alive.flag").write_text(f"{os.getpid()} {S.VERSION}", encoding="utf-8")
+        except OSError:
+            pass
+        if getattr(self.args, "wait_pid", None) or getattr(self.args, "updated", False):
             self.notify(f"AimTrail diperbarui ke v{S.VERSION}.")
         if FROZEN:
             updater.cleanup_old(sys.executable)      # sisa file dari pembaruan sebelumnya
@@ -515,6 +552,7 @@ def main(argv=None):
     data = Path(args.data_dir) if args.data_dir else default_data_dir()
     setup_logging(data)
 
+    consume_update_flag(data, args)
     if args.wait_pid:
         print(f"Setelah pembaruan: menunggu proses lama (pid {args.wait_pid}) selesai...")
         wait_pid(args.wait_pid)

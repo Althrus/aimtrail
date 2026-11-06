@@ -28,7 +28,7 @@
   <section class="left">
     <div class="preview" id="pv" data-bg="game">
       <div id="stage"><canvas id="glow"></canvas><canvas id="main"></canvas>
-        <div class="layer" id="lkeys"></div><div class="layer" id="lmetrics"></div><div class="layer" id="lpad"></div></div>
+        <div class="layer" id="lkeys"></div><div class="layer" id="ldir"></div><div class="layer" id="lmetrics"></div><div class="layer" id="lpad"></div></div>
     </div>
     <p class="hint">Pratinjau memperlihatkan semua overlay sekaligus dengan tema yang sama. Ubah di kanan, hasilnya langsung terlihat.</p>
     <div class="bar">
@@ -60,6 +60,7 @@
 <script src="keys.js"></script>
 <script src="metrics.js"></script>
 <script src="pad.js"></script>
+<script src="dir.js"></script>
 <script>
 const $ = id => document.getElementById(id), K = AimKeys;
 const SW = 1920, SH = 1080; let scale = 1, connected = false, source = '';
@@ -72,8 +73,9 @@ const KEYS = [['W', 1, 0], ['A', 0, 1], ['S', 1, 1], ['D', 2, 1]].map(([id, x, y
 const keys = new AimKeys.KeysView($('lkeys'), {}); keys.cfg = Object.assign({}, keys.cfg); keys.setConfig({ useTheme: true, keys: KEYS, mouseShow: true, mouseX: 3.6, scale: 1, posX: 4, posY: 94, wm: false });
 const metrics = new AimMetrics.MetricsView($('lmetrics'), {}); metrics.setConfig({ scale: 0.95, posX: 50, posY: 4 });
 const pad = new AimPad.PadView($('lpad'), {}); pad.setConfig({ scale: 0.7, posX: 97, posY: 96 });
-const views = [keys, metrics, pad];
-function applyTheme() { trail.setTheme(theme); keys.setTheme(theme); metrics.setTheme(theme); pad.setTheme(theme); }
+const dirv = new AimDir.DirView($('ldir'), {}); dirv.setConfig({ scale: 0.55, posX: 5, posY: 42, maxSpeedCm: 14, wm: false });
+const views = [keys, metrics, pad, dirv];
+function applyTheme() { trail.setTheme(theme); keys.setTheme(theme); metrics.setTheme(theme); pad.setTheme(theme); dirv.setTheme(theme); }
 applyTheme();
 
 function layout() {
@@ -129,7 +131,7 @@ setInterval(() => {
   const dx = Math.cos(t * 2.2) * 15 + Math.sin(t * 7) * 5, dy = Math.sin(t * 1.6) * 11 + 3;
   trail.move(dx, dy, 16, now);
   if (animLock) return;
-  metrics.move(dx, dy, 16, now);
+  metrics.move(dx, dy, 16, now); dirv.move(dx * 3, dy * 3);
   if (n * 16 > nextClick) { metrics.buttons(1, now); holdUntil = now + 90 + Math.random() * 280; nextClick += 150 + Math.random() * 420; }
   if (holdUntil && now > holdUntil) { metrics.buttons(0, now); holdUntil = 0; }
   if (n % 18 === 0) { if (keyDown) keys.key(keyDown, false); keyDown = Math.random() < 0.8 ? VKS[Math.random() * VKS.length | 0] : null; if (keyDown) keys.key(keyDown, true); }

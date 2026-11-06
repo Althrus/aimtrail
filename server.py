@@ -27,7 +27,7 @@ from aiohttp import web, WSMsgType
 
 import updater
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 BASE = Path(__file__).resolve().parent
 # file web: di dalam paket PyInstaller (_MEIPASS) bila dibekukan, selain itu di samping server.py
@@ -51,10 +51,10 @@ def cfg_path(name):
 # Hanya tombol yang ditampilkan di overlay yang diteruskan (bukan keylogger). Default = 21 tombol FPS.
 DEFAULT_WATCH = {0x31, 0x32, 0x33, 0x34, 0x51, 0x57, 0x41, 0x53, 0x44, 0x45, 0x43, 0x5A,
                  0x10, 0x09, 0x52, 0x46, 0x56, 0x47, 0x11, 0x12, 0x20}
-SUBS = {"keys": {"k", "b", "w"}, "trail": {"m", "b"}, "metrics": {"m", "b"}, "pad": {"p", "pc"}, "cfg": set()}
+SUBS = {"keys": {"k", "b", "w"}, "trail": {"m", "b"}, "metrics": {"m", "b"}, "pad": {"p", "pc"}, "dir": {"m"}, "cfg": set()}
 # jenis event yang dikirim per halaman ("cfg": hanya pengaturan)
 # Semua kelompok pengaturan yang disimpan server dan disiarkan ke seluruh klien
-CFG_FILES = {"config": "config.json", "kconfig": "keys.json", "mconfig": "metrics.json", "pconfig": "pad.json", "tconfig": "theme.json"}
+CFG_FILES = {"config": "config.json", "kconfig": "keys.json", "mconfig": "metrics.json", "pconfig": "pad.json", "dconfig": "direction.json", "tconfig": "theme.json"}
 
 
 class Hub:
@@ -459,7 +459,7 @@ async def broadcast(app, text, skip=None):
 
 def peers(app):
     """Jumlah overlay (Browser Source) yang terhubung, per jenis. Dipakai agar watermark tidak ganda."""
-    n = {"trail": 0, "keys": 0, "metrics": 0, "pad": 0}
+    n = {"trail": 0, "keys": 0, "metrics": 0, "pad": 0, "dir": 0}
     for sub, role in app["clients"].values():
         if role == "overlay" and sub in n:
             n[sub] += 1
@@ -607,7 +607,8 @@ iframe{position:absolute;left:0;top:0;width:100%;height:100%;border:0;background
 LOADERS = [("AimTrail-Ekor-Mouse.html", "overlay.html", "Ekor Mouse"),
            ("AimTrail-Keyboard-Mouse.html", "keys.html", "Keyboard dan Mouse"),
            ("AimTrail-Metrik.html", "metrics.html", "Metrik"),
-           ("AimTrail-Controller.html", "pad.html", "Controller")]
+           ("AimTrail-Controller.html", "pad.html", "Controller"),
+           ("AimTrail-Arah.html", "dir.html", "Arah Gerak")]
 
 
 def obs_dir():
@@ -699,7 +700,8 @@ async def status(request):
                               "update": updater.public_state(),
                               "obs": {"dir": str(obs_dir()), "trail": str(obs_dir() / LOADERS[0][0]),
                                       "keys": str(obs_dir() / LOADERS[1][0]),
-                                      "metrics": str(obs_dir() / LOADERS[2][0]), "pad": str(obs_dir() / LOADERS[3][0])}})
+                                      "metrics": str(obs_dir() / LOADERS[2][0]), "pad": str(obs_dir() / LOADERS[3][0]),
+                                      "dir": str(obs_dir() / LOADERS[4][0])}})
 
 
 def same_origin(request):

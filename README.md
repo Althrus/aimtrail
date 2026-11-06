@@ -1,6 +1,6 @@
 # AimTrail — overlay jejak mouse + tombol keyboard/mouse untuk live stream
 
-> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.5.0
+> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.6.0
 
 **Baru membuka? Baca panduan singkatnya:** `web/Panduan-AimTrail.pdf`, atau di aplikasi: menu tray → *Buka panduan* (`http://localhost:8765/manual.html`).
 
@@ -28,7 +28,7 @@ Tidak perlu memasang Python. Cukup jalankan **`AimTrail.exe`**: ikon muncul di s
 2. **GitHub Actions:** unggah proyek ini ke repositori GitHub, lalu jalankan workflow *Build AimTrail.exe*
    (tab Actions) atau buat tag `v1.4.0`; file `.exe` jadi artifact / lampiran Release otomatis
 3. **Installer (opsional):** setelah `build.bat`, buka `installer.iss` dengan [Inno Setup](https://jrsoftware.org/isinfo.php)
-   → Compile → `AimTrail-Setup-1.5.0.exe` (ada pilihan ikon desktop dan jalan otomatis)
+   → Compile → `AimTrail-Setup-1.6.0.exe` (ada pilihan ikon desktop dan jalan otomatis)
 
 **Penyimpanan:** versi `.exe` menyimpan pengaturan di `%APPDATA%\AimTrail` (`config.json`, `keys.json`,
 `settings.json`, `aimtrail.log`), jadi tetap aman saat `.exe` diganti dengan versi baru. Untuk memindahkan
@@ -74,7 +74,7 @@ Kedua overlay menampilkan watermark kecil **"Created by Andromache | TikTok @and
 *Watermark* pada panel. Jika dua overlay dipakai bersamaan, watermark otomatis hanya tampil di satu overlay (tidak ganda).
 Kredit juga ada di panel, menu Tentang, properti `.exe`, installer, dan manual.
 
-## Empat overlay
+## Lima overlay
 
 | Overlay | URL Browser Source | Panel pengaturan |
 |---|---|---|
@@ -82,6 +82,7 @@ Kredit juga ada di panel, menu Tentang, properti `.exe`, installer, dan manual.
 | Tombol keyboard + mouse | `http://localhost:8765/keys.html` | `/keys-panel.html` |
 | Metrik live | `http://localhost:8765/metrics.html` | `/metrics-panel.html` |
 | Controller (gamepad) | `http://localhost:8765/pad.html` | `/pad-panel.html` |
+| Arah gerak mouse | `http://localhost:8765/dir.html` | `/dir-panel.html` |
 
 Masing-masing Browser Source terpisah, jadi bebas diletakkan dan diubah ukurannya sendiri-sendiri. Halaman **Tema** (`/tema.html`)
 mengatur warna, huruf, bentuk, dan animasi untuk semuanya sekaligus.
@@ -99,6 +100,10 @@ mengatur warna, huruf, bentuk, dan animasi untuk semuanya sekaligus.
 | Satu tema untuk semua overlay | Animasi masuk dan keluar |
 |---|---|
 | ![Tema](docs/demo-theme.gif) | ![Animasi](docs/demo-animasi.gif) |
+
+| Arah gerak mouse (chevron, kompas, bar) |
+|---|
+| ![Arah gerak](docs/demo-arah.gif) |
 
 Panduan singkat: [Bahasa Indonesia](web/Panduan-AimTrail.pdf) · [English](web/AimTrail-Guide.pdf) · English README: [README.en.md](README.en.md)
 
@@ -177,6 +182,14 @@ Empat kartu: **kecepatan mouse** (cm/dtk dengan DPI-mu atau hitungan mentah, plu
 (jarak bersih dibagi panjang lintasan per jendela 1 detik, dihitung per kotak waktu 40 ms). 100% = halus; makin rendah = makin bolak-balik.
 Ini indikator kasar, bukan skor resmi. Bisa dihitung hanya saat menahan klik (menembak) atau selalu. Susunan baris/kolom/kotak, bar, grafik,
 tombol yang dihitung, sembunyi otomatis, dan tombol **Reset sesi** ada di panel Metrik.
+
+## Arah gerak mouse
+
+Menunjukkan **ke mana** dan **seberapa cepat** mouse bergerak. Tiga gaya: **panah chevron** (tiap arah punya tiga panah yang menyala bertingkat sesuai kecepatan, dengan glow
+dan kilau; arah miring menyalakan dua arah sekaligus), **kompas melingkar** (48 busur menyala ke arah gerak, jarum memanjang sesuai kecepatan), dan **bar keseimbangan**
+(terisi dari tengah ke kiri/kanan dan atas/bawah). Kecepatan dihitung dalam cm/dtk dari DPI-mu, dihaluskan dengan waktu naik cepat dan waktu turun lambat
+(bisa diatur), ada zona mati untuk getaran kecil, kurva kepekaan, balik arah, mode hanya kiri-kanan, angka kecepatan, sembunyi otomatis, ikut tema dan animasi.
+Loop gambar berhenti saat mouse diam.
 
 ## Controller (gamepad)
 
@@ -270,6 +283,7 @@ web/panel.css      gaya panel
 web/wm.js         watermark
 web/theme.js, anim.js  tema bersama + animasi masuk/keluar
 web/metrics.js, metrics.html, metrics-panel.html  metrik live
+web/dir.js, dir.html, dir-panel.html  arah gerak mouse
 web/pad.js, pad.html, pad-panel.html  controller (gamepad)
 web/tema.html       halaman Tema & animasi
 web/nav.js          navigasi bersama panel

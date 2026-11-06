@@ -229,17 +229,129 @@ def relaunch(exe_path):
                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+# ------------------------------------------------------- skrip pembantu (Windows)
+# Berjalan MANDIRI setelah AimTrail menutup diri: menunggu proses lama selesai, mengganti file (mencoba ulang bila dikunci
+# antivirus), menyalakan versi baru dan memastikan benar-benar berjalan (alive.flag), lalu mencatat semuanya ke update.log.
+# Jalur file dikirim lewat variabel lingkungan (AT_*) supaya aman untuk nama folder ber-karakter khusus.
+HELPER_CMD = """@echo off
+setlocal enableextensions
+cd /d "%AT_DATA%"
+set "LOG=%AT_DATA%\\update.log"
+echo.>> "%LOG%"
+echo [%date% %time%] === pembaruan dimulai, pid lama %AT_PID% >> "%LOG%"
+set /a N=0
+:waitold
+tasklist /FI "PID eq %AT_PID%" 2>nul | find "%AT_PID%" >nul
+if errorlevel 1 goto swap
+set /a N+=1
+if %N% GEQ 90 goto swap
+ping -n 2 127.0.0.1 >nul
+goto waitold
+:swap
+ping -n 3 127.0.0.1 >nul
+echo [%date% %time%] proses lama selesai, mengganti file >> "%LOG%"
+set /a M=0
+:mv1
+move /y "%AT_EXE%" "%AT_EXE%.old" >nul 2>> "%LOG%"
+if not errorlevel 1 goto mv2
+set /a M+=1
+if %M% GEQ 15 goto fail
+ping -n 2 127.0.0.1 >nul
+goto mv1
+:mv2
+set /a M=0
+:mv2loop
+move /y "%AT_NEW%" "%AT_EXE%" >nul 2>> "%LOG%"
+if not errorlevel 1 goto swapped
+set /a M+=1
+if %M% GEQ 15 goto rollback
+ping -n 2 127.0.0.1 >nul
+goto mv2loop
+:swapped
+echo [%date% %time%] file diganti >> "%LOG%"
+echo ok>"%AT_DATA%\\just_updated.flag"
+del /f /q "%AT_DATA%\\alive.flag" >nul 2>&1
+set /a T=0
+:launch
+set /a T+=1
+echo [%date% %time%] menyalakan versi baru, percobaan %T% >> "%LOG%"
+set /a K=T %% 2
+if %K%==0 goto viaexplorer
+start "" "%AT_EXE%" --minimized
+goto chkinit
+:viaexplorer
+start "" explorer.exe "%AT_EXE%"
+:chkinit
+set /a W=0
+:chk
+if exist "%AT_DATA%\\alive.flag" goto done
+set /a W+=1
+if %W% GEQ 25 goto again
+ping -n 2 127.0.0.1 >nul
+goto chk
+:again
+if %T% GEQ 5 goto giveup
+goto launch
+:done
+echo [%date% %time%] versi baru berjalan >> "%LOG%"
+goto end
+:giveup
+echo [%date% %time%] versi baru tidak terdeteksi berjalan, buka AimTrail.exe secara manual >> "%LOG%"
+goto end
+:rollback
+echo [%date% %time%] gagal memasang file baru, mengembalikan versi lama >> "%LOG%"
+move /y "%AT_EXE%.old" "%AT_EXE%" >nul 2>> "%LOG%"
+:fail
+echo [%date% %time%] pembaruan gagal, menyalakan versi lama >> "%LOG%"
+start "" "%AT_EXE%" --minimized
+:end
+(goto) 2>nul & del "%~f0"
+"""
+
+
+def write_helper(data_dir):
+    p = Path(data_dir) / "update.cmd"
+    p.write_bytes(HELPER_CMD.replace("\r\n", "\n").replace("\n", "\r\n").encode("ascii"))
+    return p
+
+
+def helper_env(data_dir, exe, staged, pid=None, environ=None):
+    env = relaunch_env(environ)
+    env.update(AT_EXE=str(exe), AT_NEW=str(staged), AT_DATA=str(data_dir), AT_PID=str(pid or os.getpid()))
+    return env
+
+
+def spawn_helper(data_dir, exe, staged):
+    """Jalankan skrip pembantu terpisah (tersembunyi). Setelah ini proses pemanggil sebaiknya segera keluar."""
+    script = write_helper(data_dir)
+    env = helper_env(data_dir, exe, staged)
+    base = 0x08000000 | 0x00000200                 # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+    last = None
+    for flags in (base | 0x01000000, base):         # coba lepas dari job object dulu (CREATE_BREAKAWAY_FROM_JOB), lalu tanpa
+        try:
+            proc = subprocess.Popen(["cmd.exe", "/d", "/c", str(script)], creationflags=flags if IS_WIN else 0, env=env,
+                                    cwd=str(Path(exe).parent), close_fds=True, stdin=subprocess.DEVNULL,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"Skrip pembantu pembaruan dijalankan (pid {proc.pid}), log: {Path(data_dir) / 'update.log'}")
+            return proc
+        except OSError as e:
+            last = e
+    raise last
+
+
 def relaunch_failed(proc, wait=3.0):
     """True jika proses baru langsung mati (gagal menyala) dalam `wait` detik."""
     time.sleep(wait)
     return proc.poll() is not None
 
 
-def cleanup_old(exe_path):
+def cleanup_old(exe_path, keep_days=3):
+    """Hapus sisa .new; cadangan .old disimpan `keep_days` hari (untuk jaga-jaga) lalu dihapus."""
     exe = Path(exe_path)
     for p in list(exe.parent.glob(exe.name + ".old*")) + [exe.with_name(exe.name + ".new")]:
         try:
-            p.unlink()
+            if p.name.endswith(".new") or time.time() - p.stat().st_mtime >= keep_days * 86400:
+                p.unlink()
         except OSError:
             pass
 

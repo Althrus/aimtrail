@@ -1,6 +1,6 @@
 # AimTrail — mouse trail, keyboard/mouse, metrics and controller overlays for live streaming
 
-> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.5.0
+> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.6.0
 >
 > 🇮🇩 Bahasa Indonesia: [README.md](README.md) · Quick guide: [English PDF](web/AimTrail-Guide.pdf) · [Indonesian PDF](web/Panduan-AimTrail.pdf)
 
@@ -20,6 +20,10 @@ and hide the cursor.
 |---|---|
 | ![Theme](docs/demo-theme.gif) | ![Animations](docs/demo-animasi.gif) |
 
+| Mouse direction (chevrons, compass, bar) |
+|---|
+| ![Direction](docs/demo-arah.gif) |
+
 ## Features
 
 - **Mouse trail** with a smooth fading tail while you hold a button (or **always on**, with an on/off switch), optional *dot locked in the center*,
@@ -27,6 +31,7 @@ and hide the cursor.
 - **Keyboard + mouse display**: 21 FPS keys by default (1 2 3 4, Q W E R, A S D F G, SHIFT Z C V, TAB, CTRL, ALT, SPACE) plus a mouse
   (left, right, middle, scroll, thumb buttons). Drag keys to rearrange, add any key, 4 looks (neon, flat, 3D keycap, glass)
 - **Live metrics**: mouse speed, clicks per second, click hold time, aim stability
+- **Mouse direction overlay**: dynamic arrows (chevrons that light up in steps, circular compass, balance bar) showing where and how fast the mouse moves
 - **Controller overlay** (Xbox / XInput): buttons, analog triggers, sticks with a motion trail, Xbox / PlayStation / Nintendo labels
 - **One shared theme** (colors, font, shape) and **enter / exit animations** for all overlays
 - **Windows tray app** (`AimTrail.exe`), **automatic updates** from GitHub Releases, **OBS anti-disconnect** local files
@@ -48,6 +53,7 @@ and hide the cursor.
 | Keyboard + mouse | `http://localhost:8765/keys.html` | `/keys-panel.html` |
 | Live metrics | `http://localhost:8765/metrics.html` | `/metrics-panel.html` |
 | Controller | `http://localhost:8765/pad.html` | `/pad-panel.html` |
+| Mouse direction | `http://localhost:8765/dir.html` | `/dir-panel.html` |
 | Shared theme & animations | — | `/tema.html` |
 
 > The panel UI is currently in Indonesian. Key labels: **Selalu aktif** = Always on · **Titik terkunci di tengah** = Dot locked in the center ·
@@ -87,6 +93,12 @@ Pressed keys light up and fade out. Drag keys in the preview to move them (with 
 | **Stability** | Straightness of mouse movement while shooting: net distance ÷ path length over the last second (40 ms bins). 100% is smooth, lower is more back-and-forth shake. A rough indicator, not an official score |
 
 Layout (row / column / grid), bars, which button counts, stability mode (only while holding the button, or always) and a **session reset** are in the panel.
+
+### Mouse direction
+Shows **where** and **how fast** the mouse moves. Three styles: **chevron arrows** (three arrows per direction light up in steps with speed, with glow and shimmer; diagonal moves
+light two directions), a **circular compass** (48 arcs light toward the movement and a needle stretches with speed) and a **balance bar** (fills from the center, left/right and up/down).
+Speed is computed in cm/s from your DPI and smoothed with a fast attack and slow release (both adjustable), with a dead zone for tiny jitter, a sensitivity curve, direction flips,
+horizontal-only mode, an optional speed readout, auto-hide, shared theme and animations. The draw loop stops when the mouse is still.
 
 ### Controller
 Reads Xbox / XInput controllers (up to four) and shows buttons, analog triggers (filled by pressure), both sticks with a short trail, D-pad and
@@ -158,15 +170,15 @@ build.bat                                              # builds dist\AimTrail.ex
 ```
 
 Project layout: `app.py` (tray app), `server.py` (input + web + WebSocket), `updater.py` (updates), `web/` (overlays and panels: `overlay`, `keys`, `metrics`,
-`pad`, `tema`, shared `theme.js` / `anim.js` / `wm.js`), `tools/` (release and manual generators), `docs/` (demo GIFs).
+`pad`, `dir`, `tema`, shared `theme.js` / `anim.js` / `wm.js`), `tools/` (release and manual generators), `docs/` (demo GIFs).
 
 ### WebSocket protocol (`/ws`), for building your own overlay
-- Connect to `/ws?sub=trail|keys|metrics|pad|cfg&role=overlay` (no `sub` = everything).
-- Server → client: `hello` (all settings, current state), settings updates (`config`, `kconfig`, `mconfig`, `pconfig`, `tconfig`), `peers`, and event arrays:
+- Connect to `/ws?sub=trail|keys|metrics|pad|dir|cfg&role=overlay` (no `sub` = everything).
+- Server → client: `hello` (all settings, current state), settings updates (`config`, `kconfig`, `mconfig`, `pconfig`, `dconfig`, `tconfig`), `peers`, and event arrays:
   `{"t":"m","dx","dy","d"}` raw mouse motion · `{"t":"b","b":mask}` mouse buttons (1 left, 2 right, 4 middle, 8 Mouse 4, 16 Mouse 5) ·
   `{"t":"k","k":vk,"d":1|0}` key (Windows VK, only layout keys) · `{"t":"w","v":±1}` scroll · `{"t":"p","i":slot,"b","lt","rt","lx","ly","rx","ry"}` controller state ·
   `{"t":"pc","i":slot,"on":1|0}` controller connect/disconnect.
-- Client → server: `{"t":"config"|"kconfig"|"mconfig"|"pconfig"|"tconfig","config":{...}}`. HTTP: `GET /api/status`, `GET /api/always?on=1|0|toggle`.
+- Client → server: `{"t":"config"|"kconfig"|"mconfig"|"pconfig"|"dconfig"|"tconfig","config":{...}}`. HTTP: `GET /api/status`, `GET /api/always?on=1|0|toggle`.
 
 ## License and credits
 
