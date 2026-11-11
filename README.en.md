@@ -1,6 +1,6 @@
 # AimTrail — mouse trail, keyboard/mouse, metrics and controller overlays for live streaming
 
-> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.6.1
+> **Created by Andromache** · TikTok [@andromache.4k](https://www.tiktok.com/@andromache.4k) · v1.7.0
 >
 > 🇮🇩 Bahasa Indonesia: [README.md](README.md) · Quick guide: [English PDF](web/AimTrail-Guide.pdf) · [Indonesian PDF](web/Panduan-AimTrail.pdf)
 

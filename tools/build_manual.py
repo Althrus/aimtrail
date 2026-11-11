@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from manual_en import CONTENT_EN  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.6.1"
+VERSION = "1.7.0"
 CREDIT = "Created by Andromache | TikTok @andromache.4k"
 TIKTOK = "https://www.tiktok.com/@andromache.4k"
 
